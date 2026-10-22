@@ -23,6 +23,12 @@ An Android app (built for phones like the Galaxy S22 Ultra, Android 8.0+) for **
   "Own N" badges show what you already have. It updates weekly on Wi-Fi while charging. Before it's
   downloaded, the same filters run online against Scryfall. The database also lets the scanner and search
   identify Magic cards with no signal, and it powers deck suggestions beyond your own collection.
+- **Themes and customization.** 13 themes (Card Vault, Planeswalker, Electric, Grand Line, Holo Foil,
+  the five Magic land types, Retro Handheld, Midnight OLED, and Material You colors from your wallpaper), light /
+  dark / follow phone, a custom accent color, and background artwork: a tilted collage of your most
+  valuable cards, your own photos (picked with the system photo picker, no storage permission needed),
+  or any single card ("Use as background" on a card's page). Adjustable visibility, optional blur, and an
+  animated holo shimmer on foil cards.
 - **Build decks with strategy help.**
   - Format rules for Magic (Standard, Pioneer, Modern, Legacy, Pauper, Commander, Limited), Pokémon
     (Standard / Expanded / Unlimited) and One Piece: deck size, copy limits, legality, Leader / Commander

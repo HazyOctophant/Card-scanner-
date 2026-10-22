@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TableChart
@@ -122,6 +123,7 @@ fun HomeScreen(nav: NavController) {
         actions = {
             if (refreshing) CircularProgressIndicator(Modifier.size(24.dp).padding(2.dp), strokeWidth = 2.dp)
             else IconButton(onClick = { PriceRefreshWorker.runNow(context) }) { Icon(Icons.Default.Refresh, "Refresh prices") }
+            IconButton(onClick = { nav.navigate(Routes.APPEARANCE) }) { Icon(Icons.Default.Palette, "Appearance") }
             IconButton(onClick = { nav.navigate(Routes.SETTINGS) }) { Icon(Icons.Default.Settings, "Settings") }
         },
     ) { padding ->

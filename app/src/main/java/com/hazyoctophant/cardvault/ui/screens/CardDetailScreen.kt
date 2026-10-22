@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
@@ -49,6 +50,8 @@ import com.hazyoctophant.cardvault.data.db.CollectionEntryEntity
 import com.hazyoctophant.cardvault.data.db.OwnedCard
 import com.hazyoctophant.cardvault.data.db.PriceEntity
 import com.hazyoctophant.cardvault.data.remote.CatalogCard
+import com.hazyoctophant.cardvault.model.BackgroundLayout
+import com.hazyoctophant.cardvault.model.BackgroundSource
 import com.hazyoctophant.cardvault.model.Condition
 import com.hazyoctophant.cardvault.model.DeckZone
 import com.hazyoctophant.cardvault.model.Finish
@@ -84,6 +87,14 @@ class CardDetailViewModel(private val c: AppContainer, val cardId: String) : Vie
     val decks = c.library.observeDecks().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val settings = c.settings.settings
 
+    fun useAsWallpaper(card: CardEntity) = c.settings.update {
+        it.copy(
+            wallpaperCardImage = card.imageUrlLarge ?: card.imageUrl.orEmpty(),
+            backgroundSource = BackgroundSource.ONE_CARD,
+            backgroundLayout = BackgroundLayout.SINGLE,
+        )
+    }
+
     fun update(entry: CollectionEntryEntity) = viewModelScope.launch { c.cards.updateEntry(entry) }
     fun delete(entry: CollectionEntryEntity) = viewModelScope.launch { c.cards.deleteEntry(entry) }
     fun addCopies(card: CardEntity, quantity: Int, finish: Finish, condition: Condition, binderId: Long?) = viewModelScope.launch {
@@ -113,6 +124,9 @@ fun CardDetailScreen(nav: NavController, cardId: String) {
         title = c?.name ?: "Card",
         nav = nav,
         actions = {
+            c?.let { card ->
+                IconButton(onClick = { vm.useAsWallpaper(card) }) { Icon(Icons.Default.Wallpaper, "Use as app background") }
+            }
             c?.marketUrl?.let { url ->
                 IconButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }) {
                     Icon(Icons.AutoMirrored.Filled.OpenInNew, "Open on market site")

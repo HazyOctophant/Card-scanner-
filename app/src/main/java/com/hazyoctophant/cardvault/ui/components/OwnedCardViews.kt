@@ -67,7 +67,7 @@ fun OwnedCardRow(o: OwnedCard, onClick: () -> Unit, modifier: Modifier = Modifie
 fun OwnedCardTile(o: OwnedCard, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.clickable(onClick = onClick)) {
         Box {
-            CardImage(o.card.imageUrl, Modifier.fillMaxWidth(), o.card.name)
+            CardImage(o.card.imageUrl, Modifier.fillMaxWidth().holoShimmer(o.entry.finish != Finish.NORMAL), o.card.name)
             if (o.entry.quantity > 1) {
                 Text(
                     "×${o.entry.quantity}",

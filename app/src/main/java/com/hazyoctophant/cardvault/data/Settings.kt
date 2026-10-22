@@ -1,6 +1,10 @@
 package com.hazyoctophant.cardvault.data
 
 import android.content.Context
+import com.hazyoctophant.cardvault.model.BackgroundLayout
+import com.hazyoctophant.cardvault.model.BackgroundSource
+import com.hazyoctophant.cardvault.model.DarkMode
+import com.hazyoctophant.cardvault.model.ThemePreset
 import com.hazyoctophant.cardvault.model.ValuationMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +22,20 @@ data class AppSettings(
     val mtgDbVersion: String = "",
     val mtgDbImportedAt: Long = 0L,
     val mtgDbAutoUpdate: Boolean = true,
+    // ---- Appearance ----
+    val theme: ThemePreset = ThemePreset.VAULT,
+    val darkMode: DarkMode = DarkMode.SYSTEM,
+    /** ARGB accent that overrides the theme's primary color; 0 = use the theme's own. */
+    val accentOverride: Long = 0L,
+    val backgroundSource: BackgroundSource = BackgroundSource.NONE,
+    val backgroundLayout: BackgroundLayout = BackgroundLayout.COLLAGE,
+    /** How strongly background artwork shows through (0 = hidden, 1 = full). */
+    val backgroundVisibility: Float = 0.22f,
+    val backgroundBlur: Boolean = false,
+    /** Image used when [backgroundSource] is ONE_CARD. */
+    val wallpaperCardImage: String = "",
+    /** Animated rainbow sheen on foil / holo cards. */
+    val holoEffects: Boolean = true,
 )
 
 /** Small key/value settings store backed by SharedPreferences. */
@@ -40,6 +58,15 @@ class SettingsStore(context: Context) {
             .putString("mtgDbVersion", next.mtgDbVersion)
             .putLong("mtgDbImportedAt", next.mtgDbImportedAt)
             .putBoolean("mtgDbAutoUpdate", next.mtgDbAutoUpdate)
+            .putString("theme", next.theme.name)
+            .putString("darkMode", next.darkMode.name)
+            .putLong("accentOverride", next.accentOverride)
+            .putString("backgroundSource", next.backgroundSource.name)
+            .putString("backgroundLayout", next.backgroundLayout.name)
+            .putFloat("backgroundVisibility", next.backgroundVisibility)
+            .putBoolean("backgroundBlur", next.backgroundBlur)
+            .putString("wallpaperCardImage", next.wallpaperCardImage)
+            .putBoolean("holoEffects", next.holoEffects)
             .apply()
         state.value = next
     }
@@ -56,5 +83,17 @@ class SettingsStore(context: Context) {
         mtgDbVersion = prefs.getString("mtgDbVersion", "") ?: "",
         mtgDbImportedAt = prefs.getLong("mtgDbImportedAt", 0L),
         mtgDbAutoUpdate = prefs.getBoolean("mtgDbAutoUpdate", true),
+        theme = enumPref("theme", ThemePreset.VAULT),
+        darkMode = enumPref("darkMode", DarkMode.SYSTEM),
+        accentOverride = prefs.getLong("accentOverride", 0L),
+        backgroundSource = enumPref("backgroundSource", BackgroundSource.NONE),
+        backgroundLayout = enumPref("backgroundLayout", BackgroundLayout.COLLAGE),
+        backgroundVisibility = prefs.getFloat("backgroundVisibility", 0.22f),
+        backgroundBlur = prefs.getBoolean("backgroundBlur", false),
+        wallpaperCardImage = prefs.getString("wallpaperCardImage", "") ?: "",
+        holoEffects = prefs.getBoolean("holoEffects", true),
     )
+
+    private inline fun <reified E : Enum<E>> enumPref(key: String, default: E): E =
+        prefs.getString(key, null)?.let { name -> enumValues<E>().firstOrNull { it.name == name } } ?: default
 }

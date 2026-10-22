@@ -43,6 +43,11 @@ fun SettingsScreen(nav: NavController) {
 
     ScreenScaffold(title = "Settings", nav = nav) { padding ->
         Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()).verticalScroll(rememberScrollState())) {
+            SectionTitle("Appearance")
+            TextButton(onClick = { nav.navigate(Routes.APPEARANCE) }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Text("Themes, colors and background artwork")
+            }
+
             SectionTitle("Card value")
             Text(
                 "Prices come from several marketplaces. Choose how they're combined into the value shown for each card.",

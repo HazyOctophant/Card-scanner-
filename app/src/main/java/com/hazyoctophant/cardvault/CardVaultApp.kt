@@ -3,6 +3,7 @@ package com.hazyoctophant.cardvault
 import android.app.Application
 import android.content.Context
 import com.hazyoctophant.cardvault.data.SettingsStore
+import com.hazyoctophant.cardvault.data.WallpaperStore
 import com.hazyoctophant.cardvault.data.db.AppDatabase
 import com.hazyoctophant.cardvault.data.mtgdb.MtgDatabase
 import com.hazyoctophant.cardvault.data.mtgdb.MtgDatabaseWorker
@@ -20,6 +21,7 @@ import com.hazyoctophant.cardvault.pricing.PriceRefreshWorker
 /** Hand-wired dependencies; the app is small enough not to need a DI framework. */
 class AppContainer(context: Context) {
     val settings = SettingsStore(context)
+    val wallpapers = WallpaperStore(context)
     val db = AppDatabase.build(context)
     private val http = Http()
     private val scryfall = ScryfallCatalog(http)

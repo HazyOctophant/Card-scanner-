@@ -13,6 +13,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
+import com.hazyoctophant.cardvault.model.BackgroundSource
+import com.hazyoctophant.cardvault.ui.theme.LocalAppearance
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,10 +49,17 @@ fun ScreenScaffold(
                     }
                 },
                 actions = actions,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    // Let background artwork show through a little.
+                    containerColor = MaterialTheme.colorScheme.surface.copy(
+                        alpha = if (LocalAppearance.current.backgroundSource == BackgroundSource.NONE) 1f else 0.85f,
+                    ),
+                ),
             )
         },
         floatingActionButton = floatingActionButton,
         snackbarHost = { SnackbarHost(snackbar) },
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         content = content,
     )

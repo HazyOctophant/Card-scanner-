@@ -58,7 +58,9 @@ import androidx.navigation.NavController
 import com.hazyoctophant.cardvault.AppContainer
 import com.hazyoctophant.cardvault.data.db.BinderEntity
 import com.hazyoctophant.cardvault.data.db.OwnedCard
+import com.hazyoctophant.cardvault.model.Finish
 import com.hazyoctophant.cardvault.model.Game
+import com.hazyoctophant.cardvault.ui.components.holoShimmer
 import com.hazyoctophant.cardvault.ui.ALL_CARDS_BINDER
 import com.hazyoctophant.cardvault.ui.Routes
 import com.hazyoctophant.cardvault.ui.UNFILED_BINDER
@@ -244,7 +246,7 @@ private fun BinderPages(cards: List<OwnedCard>, pockets: Int, onClick: (OwnedCar
                             Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
                                 if (card != null) {
                                     Box(Modifier.clickable { onClick(card) }) {
-                                        CardImage(card.card.imageUrl, Modifier, card.card.name)
+                                        CardImage(card.card.imageUrl, Modifier.holoShimmer(card.entry.finish != Finish.NORMAL), card.card.name)
                                         if (card.entry.quantity > 1) {
                                             Text(
                                                 "×${card.entry.quantity}",

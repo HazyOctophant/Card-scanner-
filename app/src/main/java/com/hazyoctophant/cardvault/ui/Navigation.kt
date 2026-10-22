@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavController
@@ -27,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hazyoctophant.cardvault.model.DeckZone
 import com.hazyoctophant.cardvault.model.Game
+import com.hazyoctophant.cardvault.ui.screens.AppearanceScreen
 import com.hazyoctophant.cardvault.ui.screens.BinderScreen
 import com.hazyoctophant.cardvault.ui.screens.BindersScreen
 import com.hazyoctophant.cardvault.ui.screens.CardDetailScreen
@@ -49,6 +51,7 @@ object Routes {
     const val PRICES = "prices"
     const val SETTINGS = "settings"
     const val MTG_DATABASE = "mtgdb"
+    const val APPEARANCE = "appearance"
 
     fun card(id: String) = "card/${Uri.encode(id)}"
     fun binder(id: Long) = "binder/$id"
@@ -79,6 +82,7 @@ fun CardVaultNavHost() {
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
     Scaffold(
+        containerColor = Color.Transparent,
         bottomBar = {
             if (tabs.any { it.route == route }) {
                 NavigationBar {
@@ -103,6 +107,7 @@ fun CardVaultNavHost() {
             composable(Routes.PRICES) { PriceSheetScreen(nav) }
             composable(Routes.SETTINGS) { SettingsScreen(nav) }
             composable(Routes.MTG_DATABASE) { MtgDatabaseScreen(nav) }
+            composable(Routes.APPEARANCE) { AppearanceScreen(nav) }
             composable("card/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
                 CardDetailScreen(nav, Uri.decode(it.arguments?.getString("id").orEmpty()))
             }
