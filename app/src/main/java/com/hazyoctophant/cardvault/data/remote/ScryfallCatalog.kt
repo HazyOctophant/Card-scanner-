@@ -26,14 +26,14 @@ class ScryfallCatalog(private val http: Http) : CardCatalog {
         val q = enc(query.trim())
         val page = http.get("$base/cards/search?q=$q&unique=prints&order=released&dir=desc").obj()
             ?: return emptyList()
-        return page.arr("data")?.mapNotNull { it.obj()?.let(::parse) }?.take(60) ?: emptyList()
+        return page.arr("data")?.mapNotNull { it.obj()?.let(::parseCard) }?.take(60) ?: emptyList()
     }
 
     override suspend fun identify(hint: ScanHint): List<CatalogCard> {
         val set = hint.mtgSet
         val number = hint.mtgNumber
         if (set != null && number != null) {
-            http.get("$base/cards/${enc(set.lowercase())}/${enc(number)}").obj()?.let { return listOf(parse(it)) }
+            http.get("$base/cards/${enc(set.lowercase())}/${enc(number)}").obj()?.let { return listOf(parseCard(it)) }
         }
         for (name in hint.nameCandidates) {
             val named = http.get("$base/cards/named?fuzzy=${enc(name)}").obj() ?: continue
@@ -42,8 +42,8 @@ class ScryfallCatalog(private val http: Http) : CardCatalog {
             val oracleName = named.str("name") ?: name
             val prints = http.get(
                 "$base/cards/search?q=${enc("!\"$oracleName\"")}&unique=prints&order=released&dir=desc"
-            ).obj()?.arr("data")?.mapNotNull { it.obj()?.let(::parse) }.orEmpty()
-            val exact = parse(named)
+            ).obj()?.arr("data")?.mapNotNull { it.obj()?.let(::parseCard) }.orEmpty()
+            val exact = parseCard(named)
             val ordered = buildList {
                 // If the set code was read but the number wasn't, put that set's printings first.
                 if (set != null) addAll(prints.filter { it.card.setCode.equals(set, true) })
@@ -63,12 +63,24 @@ class ScryfallCatalog(private val http: Http) : CardCatalog {
                 put("identifiers", JsonArray(chunk.map { buildJsonObject { put("id", it.id.removePrefix("mtg:")) } }))
             }
             http.post("$base/cards/collection", body.toString()).obj()
-                ?.arr("data")?.mapNotNullTo(out) { it.obj()?.let(::parse) }
+                ?.arr("data")?.mapNotNullTo(out) { it.obj()?.let(::parseCard) }
         }
         return out
     }
 
-    private fun parse(o: JsonObject): CatalogCard {
+    /**
+     * Advanced search with Scryfall query syntax (https://scryfall.com/docs/syntax), one result per card.
+     * Used by the Magic database screen when the offline database isn't downloaded.
+     */
+    suspend fun searchQuery(q: String, order: String, dir: String = "auto"): List<CatalogCard> {
+        val url = "$base/cards/search?q=${enc(q)}&unique=cards&order=$order&dir=$dir"
+        return http.get(url).obj()?.arr("data")?.mapNotNull { it.obj()?.let(::parseCard) }.orEmpty()
+    }
+
+    /** Bulk-data descriptor: where today's full card file is and when it was generated. */
+    suspend fun bulkInfo(type: String): JsonObject? = http.get("$base/bulk-data/$type").obj()
+
+    fun parseCard(o: JsonObject): CatalogCard {
         val id = "mtg:" + (o.str("id") ?: "")
         val faces = o.arr("card_faces")?.mapNotNull { it.obj() }.orEmpty()
         val firstFace = faces.firstOrNull()

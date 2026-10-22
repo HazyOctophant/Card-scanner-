@@ -35,6 +35,16 @@ class Http(
     suspend fun post(url: String, body: String, headers: Map<String, String> = emptyMap()): JsonElement? =
         execute(Request.Builder().url(url).post(body.toRequestBody("application/json".toMediaType())), headers)
 
+    /** Opens a (large) download for streaming. The caller must close the response. */
+    suspend fun download(url: String): okhttp3.Response = withContext(Dispatchers.IO) {
+        val response = client.newCall(Request.Builder().url(url).header("User-Agent", USER_AGENT).build()).execute()
+        if (!response.isSuccessful) {
+            response.close()
+            throw HttpException(response.code, "HTTP ${response.code} downloading ${response.request.url.host}")
+        }
+        response
+    }
+
     private suspend fun execute(builder: Request.Builder, headers: Map<String, String>): JsonElement? {
         builder.header("User-Agent", USER_AGENT).header("Accept", "application/json")
         headers.forEach { (k, v) -> builder.header(k, v) }

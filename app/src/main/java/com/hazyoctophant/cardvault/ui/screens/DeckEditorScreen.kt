@@ -49,6 +49,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -98,6 +103,7 @@ data class DeckState(
     val format: DeckFormat,
     val cards: List<DeckCardWithCard>,
     val owned: Map<String, Int>,
+    val ownedByName: Map<String, Int>,
     val analysis: DeckAnalysis,
     val issues: List<Issue>,
     val suggestions: List<Suggestion>,
@@ -132,6 +138,7 @@ class DeckEditorViewModel(private val c: AppContainer, val deckId: Long) : ViewM
             format = format,
             cards = cards.sortedWith(compareBy({ it.deckCard.zone.ordinal }, { it.card.cost ?: 0.0 }, { it.card.name })),
             owned = stock.associate { it.card.id to it.quantity },
+            ownedByName = stock.groupBy { it.card.name }.mapValues { e -> e.value.sumOf { it.quantity } },
             analysis = analysis,
             issues = DeckRules.validate(format, entries),
             suggestions = DeckSuggester.suggest(format, entries, available, analysis),
@@ -164,6 +171,34 @@ class DeckEditorViewModel(private val c: AppContainer, val deckId: Long) : ViewM
 
     fun update(deck: DeckEntity) = viewModelScope.launch { c.library.updateDeck(deck) }
     suspend fun delete(deck: DeckEntity) = c.library.deleteDeck(deck)
+
+    // ---- Suggestions from the offline Magic database (cards you may not own yet) ----
+    val suggestFromDatabase = MutableStateFlow(false)
+    val dbSuggestions = MutableStateFlow<List<Suggestion>?>(null)
+    val mtgDbCount = c.mtgDb.observeCount().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun loadDatabaseSuggestions() = viewModelScope.launch {
+        val s = state.value ?: return@launch
+        if (s.deck.game != Game.MTG) return@launch
+        val head = s.format.headZone?.let { z -> s.cards.filter { it.deckCard.zone == z }.map { it.card } }.orEmpty()
+        // Commander: the commander's identity. Otherwise stay within the colors the deck already plays.
+        val allowed = head.ifEmpty { s.cards.map { it.card } }.flatMap { it.colorList }.toSet().takeIf { it.isNotEmpty() || head.isNotEmpty() }
+        val pool = c.mtgDb.candidates(allowed, s.format.id.takeIf { s.format.checkLegality })
+        dbSuggestions.value = withContext(Dispatchers.Default) {
+            val entries = s.cards.map { DeckEntry(it.card, it.deckCard.quantity, it.deckCard.zone) }
+            val stock = pool.map { OwnedStock(it, s.format.maxCopies.coerceAtMost(4)) }
+            DeckSuggester.suggest(s.format, entries, stock, s.analysis, limit = 40)
+        }
+    }
+
+    suspend fun saveFromDatabase(id: String) {
+        c.mtgDb.get(id)?.let { c.cards.save(it.toCatalogCard()) }
+    }
+
+    fun addFromDatabase(id: String) = viewModelScope.launch {
+        saveFromDatabase(id)
+        c.library.changeDeckCard(deckId, id, DeckZone.MAIN, 1)
+    }
 }
 
 @Composable
@@ -222,7 +257,7 @@ fun DeckEditorScreen(nav: NavController, deckId: Long) {
                     }
                 })
                 1 -> AnalysisTab(s)
-                else -> SuggestionsTab(s, onAdd = { vm.add(it) }, onOpen = { nav.navigate(Routes.card(it)) })
+                else -> SuggestionsTab(s, vm, onOpen = { nav.navigate(Routes.card(it)) }, onOpenDatabase = { nav.navigate(Routes.MTG_DATABASE) })
             }
         }
     }
@@ -399,28 +434,66 @@ private fun IssueRow(issue: Issue) {
 }
 
 @Composable
-private fun SuggestionsTab(s: DeckState, onAdd: (CardEntity) -> Unit, onOpen: (String) -> Unit) {
+private fun SuggestionsTab(
+    s: DeckState,
+    vm: DeckEditorViewModel,
+    onOpen: (String) -> Unit,
+    onOpenDatabase: () -> Unit,
+) {
+    val fromDb by vm.suggestFromDatabase.collectAsStateWithLifecycle()
+    val dbSuggestions by vm.dbSuggestions.collectAsStateWithLifecycle()
+    val dbCount by vm.mtgDbCount.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val useDb = s.deck.game == Game.MTG && fromDb
+    LaunchedEffect(useDb, s.cards, dbCount) { if (useDb) vm.loadDatabaseSuggestions() }
+    val list = if (useDb) dbSuggestions.orEmpty() else s.suggestions
+
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
+        if (s.deck.game == Game.MTG) item {
+            ChoiceRow(listOf(false, true), fromDb, { if (it) "Magic database" else "My collection" }, Modifier.padding(top = 8.dp)) {
+                vm.suggestFromDatabase.value = it
+            }
+        }
         item {
             Text(
-                "Cards from your collection that fit this deck, ranked by synergy with what's already in it and by what the analysis says the deck is missing.",
+                if (useDb) "Popular cards from the whole Magic card pool that fit your colors and format, ranked by synergy and by what the deck is missing. Great for finding upgrades to buy."
+                else "Cards from your collection that fit this deck, ranked by synergy with what's already in it and by what the analysis says the deck is missing.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(16.dp),
             )
         }
-        if (s.suggestions.isEmpty()) item {
+        if (useDb && dbCount == 0) item {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Text("The Magic database isn't downloaded yet.")
+                TextButton(onClick = onOpenDatabase) { Text("Open Magic database") }
+            }
+        } else if (useDb && dbSuggestions == null) item {
+            LinearProgressIndicator(Modifier.fillMaxWidth().padding(16.dp))
+        } else if (list.isEmpty()) item {
             Text("No suggestions yet — add a few core cards (or a Leader / Commander) first, or scan more cards.", Modifier.padding(16.dp))
         }
-        items(s.suggestions, key = { it.card.id }) { sug ->
-            Row(Modifier.fillMaxWidth().clickable { onOpen(sug.card.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        items(list, key = { it.card.id }) { sug ->
+            val open = {
+                if (useDb) scope.launch { vm.saveFromDatabase(sug.card.id); onOpen(sug.card.id) } else onOpen(sug.card.id)
+            }
+            Row(Modifier.fillMaxWidth().clickable { open() }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 CardImage(sug.card.imageUrl, Modifier.width(48.dp), sug.card.name)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(sug.card.name, style = MaterialTheme.typography.titleSmall)
                     sug.reasons.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
-                    Text("You have ${sug.available} available", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val ownedCopies = s.ownedByName[sug.card.name] ?: 0
+                    Text(
+                        when {
+                            !useDb -> "You have ${sug.available} available"
+                            ownedCopies > 0 -> "You own $ownedCopies"
+                            else -> "Not in your collection"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                IconButton(onClick = { onAdd(sug.card) }) { Icon(Icons.Default.Add, "Add to deck") }
+                IconButton(onClick = { if (useDb) vm.addFromDatabase(sug.card.id) else vm.add(sug.card) }) { Icon(Icons.Default.Add, "Add to deck") }
             }
             HorizontalDivider()
         }

@@ -4,6 +4,7 @@ import com.hazyoctophant.cardvault.data.db.AppDatabase
 import com.hazyoctophant.cardvault.data.db.CardEntity
 import com.hazyoctophant.cardvault.data.db.CollectionEntryEntity
 import com.hazyoctophant.cardvault.data.db.OwnedCard
+import com.hazyoctophant.cardvault.data.mtgdb.MtgDatabase
 import com.hazyoctophant.cardvault.data.remote.CardCatalog
 import com.hazyoctophant.cardvault.data.remote.CatalogCard
 import com.hazyoctophant.cardvault.model.Condition
@@ -17,24 +18,49 @@ class CardRepository(
     private val db: AppDatabase,
     private val catalogs: Map<Game, CardCatalog>,
     private val prices: PriceRepository,
+    private val mtgDb: MtgDatabase,
 ) {
     fun observeCollection(): Flow<List<OwnedCard>> = db.collection().observeAll()
     fun observeBinderCards(binderId: Long): Flow<List<OwnedCard>> = db.collection().observeBinder(binderId)
     fun observeCard(cardId: String): Flow<CardEntity?> = db.cards().observe(cardId)
     fun observeOwned(cardId: String): Flow<List<OwnedCard>> = db.collection().observeForCard(cardId)
 
-    suspend fun search(game: Game, query: String): List<CatalogCard> = catalogs.getValue(game).search(query)
+    suspend fun search(game: Game, query: String): List<CatalogCard> {
+        val online = runCatching { catalogs.getValue(game).search(query) }
+        if (game == Game.MTG && online.getOrNull().isNullOrEmpty()) {
+            // Offline (or no online match): fall back to the downloaded Magic database.
+            val local = mtgDb.findByName(query, limit = 40).map { it.toCatalogCard() }
+            if (local.isNotEmpty() || online.isSuccess) return local
+        }
+        return online.getOrThrow()
+    }
 
     /**
      * Candidates for a scanned card. When the game couldn't be detected, every database is tried with
      * the names that were read.
      */
     suspend fun identify(hint: ScanHint): List<CatalogCard> {
-        hint.game?.let { return catalogs.getValue(it).identify(hint) }
+        hint.game?.let { game ->
+            val online = runCatching { catalogs.getValue(game).identify(hint) }
+            if (game == Game.MTG && online.getOrNull().isNullOrEmpty()) {
+                val local = identifyOffline(hint)
+                if (local.isNotEmpty() || online.isSuccess) return local
+            }
+            return online.getOrThrow()
+        }
         if (hint.nameCandidates.isEmpty()) return emptyList()
         for (game in listOf(Game.MTG, Game.POKEMON, Game.ONE_PIECE)) {
             val found = runCatching { catalogs.getValue(game).identify(hint.copy(game = game)) }.getOrDefault(emptyList())
             if (found.isNotEmpty()) return found
+        }
+        return identifyOffline(hint)
+    }
+
+    /** Magic cards by OCR'd name from the offline database (works with no signal). */
+    private suspend fun identifyOffline(hint: ScanHint): List<CatalogCard> {
+        for (name in hint.nameCandidates) {
+            val found = mtgDb.findByName(name)
+            if (found.isNotEmpty()) return found.map { it.toCatalogCard() }
         }
         return emptyList()
     }

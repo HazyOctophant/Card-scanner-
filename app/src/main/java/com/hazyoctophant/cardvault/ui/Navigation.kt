@@ -34,6 +34,7 @@ import com.hazyoctophant.cardvault.ui.screens.CollectionScreen
 import com.hazyoctophant.cardvault.ui.screens.DeckEditorScreen
 import com.hazyoctophant.cardvault.ui.screens.DecksScreen
 import com.hazyoctophant.cardvault.ui.screens.HomeScreen
+import com.hazyoctophant.cardvault.ui.screens.MtgDatabaseScreen
 import com.hazyoctophant.cardvault.ui.screens.PriceSheetScreen
 import com.hazyoctophant.cardvault.ui.screens.ScanScreen
 import com.hazyoctophant.cardvault.ui.screens.SearchScreen
@@ -47,6 +48,7 @@ object Routes {
     const val DECKS = "decks"
     const val PRICES = "prices"
     const val SETTINGS = "settings"
+    const val MTG_DATABASE = "mtgdb"
 
     fun card(id: String) = "card/${Uri.encode(id)}"
     fun binder(id: Long) = "binder/$id"
@@ -100,6 +102,7 @@ fun CardVaultNavHost() {
             composable(Routes.DECKS) { DecksScreen(nav) }
             composable(Routes.PRICES) { PriceSheetScreen(nav) }
             composable(Routes.SETTINGS) { SettingsScreen(nav) }
+            composable(Routes.MTG_DATABASE) { MtgDatabaseScreen(nav) }
             composable("card/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
                 CardDetailScreen(nav, Uri.decode(it.arguments?.getString("id").orEmpty()))
             }

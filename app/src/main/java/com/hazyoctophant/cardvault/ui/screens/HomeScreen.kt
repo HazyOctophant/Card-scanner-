@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -168,6 +169,7 @@ fun HomeScreen(nav: NavController) {
             item {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AssistChip(onClick = { nav.navigateTab(Routes.SCAN) }, label = { Text("Scan") }, leadingIcon = { Icon(Icons.Default.CameraAlt, null) })
+                    AssistChip(onClick = { nav.navigate(Routes.MTG_DATABASE) }, label = { Text("Magic database") }, leadingIcon = { Icon(Icons.Default.Storage, null) })
                     AssistChip(onClick = { nav.navigate(Routes.PRICES) }, label = { Text("Price sheet") }, leadingIcon = { Icon(Icons.Default.TableChart, null) })
                     AssistChip(onClick = { nav.navigateTab(Routes.BINDERS) }, label = { Text("Binders") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, null) })
                     AssistChip(onClick = { nav.navigateTab(Routes.DECKS) }, label = { Text("Decks") }, leadingIcon = { Icon(Icons.Default.Layers, null) })

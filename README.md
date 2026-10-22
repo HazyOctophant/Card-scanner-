@@ -16,6 +16,13 @@ An Android app (built for phones like the Galaxy S22 Ultra, Android 8.0+) for **
   cost / date, group by game / set / type / rarity / color, and switch between list and grid views.
 - **Use binders.** Create colored binders (4, 9, 12 or 16 pockets per page) and swipe through them page
   by page like a real binder, or scroll through everything as one big grid.
+- **Magic: The Gathering database.** Download every Magic card (about 35,000, with rules text and
+  prices) from Scryfall's daily bulk data onto the phone, then search and filter offline: name / type /
+  rules text, color identity (within, includes or exactly), card type, rarity, mana value, format
+  legality and max price, sorted by name, popularity (EDHREC), price, mana value or release date.
+  "Own N" badges show what you already have. It updates weekly on Wi-Fi while charging. Before it's
+  downloaded, the same filters run online against Scryfall. The database also lets the scanner and search
+  identify Magic cards with no signal, and it powers deck suggestions beyond your own collection.
 - **Build decks with strategy help.**
   - Format rules for Magic (Standard, Pioneer, Modern, Legacy, Pauper, Commander, Limited), Pokémon
     (Standard / Expanded / Unlimited) and One Piece: deck size, copy limits, legality, Leader / Commander
@@ -24,14 +31,15 @@ An Android app (built for phones like the Galaxy S22 Ultra, Android 8.0+) for **
     Rush / Midrange / Ramp-Control) with guidance based on common deck-building ratios: land and
     energy counts, curve, removal, draw, counters, blockers, Supporters, search cards, and opening-hand odds.
   - **Suggestions from cards you own**, ranked by synergy and by what the deck is missing, plus
-    **Auto-build**, which fills a deck from your collection.
+    **Auto-build**, which fills a deck from your collection. Magic decks can also get suggestions from the
+    whole card database (popular cards in your colors and format) to find upgrades worth buying.
   - Deck value and **cost to complete** (copies you still need × current price). Share the deck list as text.
 
 ## Data sources
 
 | Game | Card data | Prices |
 |---|---|---|
-| Magic | [Scryfall](https://scryfall.com/docs/api) | TCGplayer (USD), Cardmarket (EUR), MTGO (tix, shown for info only) |
+| Magic | [Scryfall](https://scryfall.com/docs/api) API + [bulk data](https://scryfall.com/docs/api/bulk-data) (offline database) | TCGplayer (USD), Cardmarket (EUR), MTGO (tix, shown for info only) |
 | Pokémon | [Pokémon TCG API](https://pokemontcg.io) | TCGplayer (USD, per printing), Cardmarket (EUR) |
 | One Piece | [OPTCG API](https://optcgapi.com) | TCGplayer market price |
 
@@ -66,6 +74,7 @@ Command line: `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-deb
 ```
 app/src/main/java/com/hazyoctophant/cardvault/
   data/db        Room database: cards, collection, prices, price history, binders, decks
+  data/mtgdb     Offline Magic database: bulk import, filters (SQL + Scryfall syntax), weekly update
   data/remote    Scryfall, Pokémon TCG API, OPTCG API and exchange-rate clients
   data/repo      Collection, pricing (daily refresh + valuation) and binder/deck repositories
   scan           OCR text parser, ML Kit analyzer, scanner state machine
@@ -73,8 +82,8 @@ app/src/main/java/com/hazyoctophant/cardvault/
   strategy       Format rules, card-role detection, deck analysis and suggestions
   ui             Jetpack Compose screens
 ```
-Unit tests (`./gradlew testDebugUnitTest`) cover the scanner text parser, price valuation and the
-deck rules, analysis and suggestions.
+Unit tests (`./gradlew testDebugUnitTest`) cover the scanner text parser, price valuation, the deck
+rules, analysis and suggestions, the Magic database filters, and Scryfall bulk-file parsing.
 
 ## Notes and limits
 - Card recognition is based on the printed number and name, so very old cards without collector

@@ -14,6 +14,10 @@ data class AppSettings(
     val notifyOnRefresh: Boolean = true,
     val lastRefreshAt: Long = 0L,
     val lastRefreshError: String? = null,
+    /** Scryfall's `updated_at` for the offline Magic database that's installed (empty = none). */
+    val mtgDbVersion: String = "",
+    val mtgDbImportedAt: Long = 0L,
+    val mtgDbAutoUpdate: Boolean = true,
 )
 
 /** Small key/value settings store backed by SharedPreferences. */
@@ -33,6 +37,9 @@ class SettingsStore(context: Context) {
             .putBoolean("notifyOnRefresh", next.notifyOnRefresh)
             .putLong("lastRefreshAt", next.lastRefreshAt)
             .putString("lastRefreshError", next.lastRefreshError)
+            .putString("mtgDbVersion", next.mtgDbVersion)
+            .putLong("mtgDbImportedAt", next.mtgDbImportedAt)
+            .putBoolean("mtgDbAutoUpdate", next.mtgDbAutoUpdate)
             .apply()
         state.value = next
     }
@@ -46,5 +53,8 @@ class SettingsStore(context: Context) {
         notifyOnRefresh = prefs.getBoolean("notifyOnRefresh", true),
         lastRefreshAt = prefs.getLong("lastRefreshAt", 0L),
         lastRefreshError = prefs.getString("lastRefreshError", null),
+        mtgDbVersion = prefs.getString("mtgDbVersion", "") ?: "",
+        mtgDbImportedAt = prefs.getLong("mtgDbImportedAt", 0L),
+        mtgDbAutoUpdate = prefs.getBoolean("mtgDbAutoUpdate", true),
     )
 }

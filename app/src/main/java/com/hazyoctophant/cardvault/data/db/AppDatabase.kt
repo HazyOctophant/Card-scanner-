@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.hazyoctophant.cardvault.data.mtgdb.MtgDbCard
+import com.hazyoctophant.cardvault.data.mtgdb.MtgDbDao
 
 @Database(
     entities = [
@@ -16,6 +18,7 @@ import androidx.room.RoomDatabase
         BinderEntity::class,
         DeckEntity::class,
         DeckCardEntity::class,
+        MtgDbCard::class,
     ],
     version = 1,
     exportSchema = true,
@@ -26,6 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun prices(): PriceDao
     abstract fun binders(): BinderDao
     abstract fun decks(): DeckDao
+    abstract fun mtgDb(): MtgDbDao
 
     companion object {
         fun build(context: Context): AppDatabase =
