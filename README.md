@@ -12,6 +12,10 @@ An Android app (built for phones like the Galaxy S22 Ultra, Android 8.0+) for **
   Cardmarket only, highest or lowest — your choice), with 24h / 7-day change and price history.
 - **Use the price sheet.** Every card you own with each site's price, its unit value, the stack's total,
   and its trend. Sort and filter it, or export it as CSV for Excel / Google Sheets.
+- **Most valuable cards chart.** A ranked bar chart of your cards showing each card's price, how many copies
+  you own and today's change, plus your single most expensive card and what share of the collection's
+  value your top cards make up. Rank by price per card or by total (price × copies), filter by game,
+  and show the top 10, 25, 50 or all.
 - **Browse your collection your way.** Search, filter by game, sort by value / name / set / rarity /
   cost / date, group by game / set / type / rarity / color, and switch between list and grid views.
 - **Use binders.** Create colored binders (4, 9, 12 or 16 pockets per page) and swipe through them page

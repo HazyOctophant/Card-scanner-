@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Refresh
@@ -34,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -172,6 +174,7 @@ fun HomeScreen(nav: NavController) {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AssistChip(onClick = { nav.navigateTab(Routes.SCAN) }, label = { Text("Scan") }, leadingIcon = { Icon(Icons.Default.CameraAlt, null) })
                     AssistChip(onClick = { nav.navigate(Routes.MTG_DATABASE) }, label = { Text("Magic database") }, leadingIcon = { Icon(Icons.Default.Storage, null) })
+                    AssistChip(onClick = { nav.navigate(Routes.VALUE_CHART) }, label = { Text("Top cards") }, leadingIcon = { Icon(Icons.Default.BarChart, null) })
                     AssistChip(onClick = { nav.navigate(Routes.PRICES) }, label = { Text("Price sheet") }, leadingIcon = { Icon(Icons.Default.TableChart, null) })
                     AssistChip(onClick = { nav.navigateTab(Routes.BINDERS) }, label = { Text("Binders") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, null) })
                     AssistChip(onClick = { nav.navigateTab(Routes.DECKS) }, label = { Text("Decks") }, leadingIcon = { Icon(Icons.Default.Layers, null) })
@@ -197,7 +200,11 @@ fun HomeScreen(nav: NavController) {
                 }
             }
             if (state.mostValuable.isNotEmpty()) {
-                item { SectionTitle("Most valuable") }
+                item {
+                    SectionTitle("Most valuable") {
+                        TextButton(onClick = { nav.navigate(Routes.VALUE_CHART) }) { Text("See chart") }
+                    }
+                }
                 item { CardRow(state.mostValuable) { nav.navigate(Routes.card(it)) } }
             }
             if (state.movers.isNotEmpty()) {

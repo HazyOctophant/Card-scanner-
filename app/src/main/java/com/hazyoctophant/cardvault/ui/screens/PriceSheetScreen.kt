@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -107,6 +108,7 @@ fun PriceSheetScreen(nav: NavController) {
         actions = {
             if (refreshing) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
             else IconButton(onClick = { PriceRefreshWorker.runNow(context) }) { Icon(Icons.Default.Refresh, "Refresh prices now") }
+            IconButton(onClick = { nav.navigate(Routes.VALUE_CHART) }) { Icon(Icons.Default.BarChart, "Most valuable cards chart") }
             IconButton(onClick = { shareCsv(context, visible) }) { Icon(Icons.Default.FileDownload, "Export CSV") }
         },
     ) { padding ->
