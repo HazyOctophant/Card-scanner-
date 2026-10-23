@@ -99,8 +99,17 @@ class MtgDatabase(
             http.download(uri).use { response ->
                 val body = response.body ?: error("Empty download")
                 val counting = CountingInputStream(body.byteStream())
+                // Progress is measured on the bytes as downloaded (possibly compressed).
+                val total = body.contentLength().takeIf { it > 0 } ?: size
+                // The file may be gzip-compressed (not just gzip transfer-encoded); detect it by its magic bytes.
+                val source = java.io.BufferedInputStream(counting).let { b ->
+                    b.mark(2)
+                    val gz = b.read() == 0x1f && b.read() == 0x8b
+                    b.reset()
+                    if (gz) java.util.zip.GZIPInputStream(b) else b
+                }
                 val batch = ArrayList<MtgDbCard>(BATCH)
-                for (element in http.json.decodeToSequence(counting, JsonElement.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)) {
+                for (element in http.json.decodeToSequence(source, JsonElement.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)) {
                     val o = element.obj() ?: continue
                     if (o.str("layout") in SKIPPED_LAYOUTS) continue
                     if (o.arr("games")?.strings()?.contains("paper") == false) continue // digital-only
@@ -112,7 +121,7 @@ class MtgDatabase(
                         dao.upsert(batch)
                         imported += batch.size
                         batch.clear()
-                        onProgress(if (size > 0) (counting.count.toFloat() / size).coerceIn(0f, 0.99f) else 0f, imported)
+                        onProgress(if (total > 0) (counting.count.toFloat() / total).coerceIn(0f, 0.99f) else 0f, imported)
                     }
                 }
                 if (batch.isNotEmpty()) {

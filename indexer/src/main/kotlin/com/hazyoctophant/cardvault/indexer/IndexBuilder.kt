@@ -16,6 +16,7 @@ import kotlinx.serialization.json.decodeToSequence
 import java.awt.Color
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
+import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
@@ -27,6 +28,7 @@ import java.time.Duration
 import java.time.LocalDate
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import javax.imageio.ImageIO
 
@@ -66,7 +68,16 @@ private fun fetchStream(url: String): InputStream {
     throw last!!
 }
 
-private fun fetchJson(url: String): JsonElement = fetchStream(url).use { json.parseToJsonElement(it.readBytes().decodeToString()) }
+/** Scryfall serves its bulk files gzip-compressed; detect that from the gzip magic bytes. */
+fun maybeGunzip(input: InputStream): InputStream {
+    val buffered = BufferedInputStream(input)
+    buffered.mark(2)
+    val gzip = buffered.read() == 0x1f && buffered.read() == 0x8b
+    buffered.reset()
+    return if (gzip) GZIPInputStream(buffered) else buffered
+}
+
+private fun fetchJson(url: String): JsonElement = maybeGunzip(fetchStream(url)).use { json.parseToJsonElement(it.readBytes().decodeToString()) }
 
 private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
 private fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
@@ -83,7 +94,7 @@ fun magicSources(): List<Source> {
         ?: error("Scryfall has no unique_artwork bulk file")
     val uri = bulkFileUrl(bulk) ?: error("No bulk download link in: $bulk")
     val skip = setOf("token", "double_faced_token", "emblem", "art_series", "vanguard", "scheme", "planar", "augment", "host")
-    return fetchStream(uri).use { input ->
+    return maybeGunzip(fetchStream(uri)).use { input ->
         json.decodeToSequence(input, JsonElement.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)
             .mapNotNull { it as? JsonObject }
             .filter { o -> o.str("layout") !in skip && (o.arr("games")?.any { (it as? JsonPrimitive)?.content == "paper" } ?: true) }
