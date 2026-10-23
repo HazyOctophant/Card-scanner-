@@ -2,6 +2,8 @@ package com.hazyoctophant.cardvault
 
 import android.app.Application
 import android.content.Context
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import com.hazyoctophant.cardvault.data.SettingsStore
 import com.hazyoctophant.cardvault.data.WallpaperStore
 import com.hazyoctophant.cardvault.data.db.AppDatabase
@@ -15,6 +17,8 @@ import com.hazyoctophant.cardvault.data.remote.ScryfallCatalog
 import com.hazyoctophant.cardvault.data.repo.CardRepository
 import com.hazyoctophant.cardvault.data.repo.LibraryRepository
 import com.hazyoctophant.cardvault.data.repo.PriceRepository
+import com.hazyoctophant.cardvault.data.repo.ProfileRepository
+import com.hazyoctophant.cardvault.scan.CardImageMatcher
 import com.hazyoctophant.cardvault.model.Game
 import com.hazyoctophant.cardvault.pricing.PriceRefreshWorker
 
@@ -30,10 +34,12 @@ class AppContainer(context: Context) {
         Game.POKEMON to PokemonTcgCatalog(http) { settings.current.pokemonApiKey },
         Game.ONE_PIECE to OnePieceCatalog(http, context.cacheDir),
     )
-    val prices = PriceRepository(db, settings, ExchangeRates(http), catalogs)
+    val profiles = ProfileRepository(db, settings)
+    val prices = PriceRepository(db, settings, ExchangeRates(http), catalogs, profiles)
     val mtgDb = MtgDatabase(db, http, scryfall, settings)
-    val cards = CardRepository(db, catalogs, prices, mtgDb)
-    val library = LibraryRepository(db, cards)
+    val cards = CardRepository(db, catalogs, prices, mtgDb, profiles)
+    val imageMatcher = CardImageMatcher(http)
+    val library = LibraryRepository(db, cards, profiles)
 }
 
 class CardVaultApp : Application() {
@@ -44,6 +50,7 @@ class CardVaultApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         PriceRefreshWorker.createChannel(this)
+        MainScope().launch { container.profiles.ensureValid() }
         PriceRefreshWorker.schedule(this, container.settings.current.dailyRefresh)
         container.settings.current.let { s ->
             // Keep the offline Magic database fresh once it has been downloaded.

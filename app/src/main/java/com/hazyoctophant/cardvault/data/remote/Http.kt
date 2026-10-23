@@ -35,6 +35,15 @@ class Http(
     suspend fun post(url: String, body: String, headers: Map<String, String> = emptyMap()): JsonElement? =
         execute(Request.Builder().url(url).post(body.toRequestBody("application/json".toMediaType())), headers)
 
+    /** Downloads a small binary file such as a card image; null if it isn't available. */
+    suspend fun bytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        runCatching {
+            client.newCall(Request.Builder().url(url).header("User-Agent", USER_AGENT).build()).execute().use { r ->
+                if (r.isSuccessful) r.body?.bytes() else null
+            }
+        }.getOrNull()
+    }
+
     /** Opens a (large) download for streaming. The caller must close the response. */
     suspend fun download(url: String): okhttp3.Response = withContext(Dispatchers.IO) {
         val response = client.newCall(Request.Builder().url(url).header("User-Agent", USER_AGENT).build()).execute()

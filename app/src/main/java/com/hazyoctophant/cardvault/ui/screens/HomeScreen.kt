@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -62,6 +63,7 @@ import com.hazyoctophant.cardvault.ui.components.ChangeText
 import com.hazyoctophant.cardvault.ui.components.EmptyState
 import com.hazyoctophant.cardvault.ui.components.GameDot
 import com.hazyoctophant.cardvault.ui.components.LineChart
+import com.hazyoctophant.cardvault.ui.components.ProfileSwitcherButton
 import com.hazyoctophant.cardvault.ui.components.ScreenScaffold
 import com.hazyoctophant.cardvault.ui.components.SectionTitle
 import com.hazyoctophant.cardvault.ui.formatSignedUsd
@@ -88,7 +90,7 @@ data class HomeState(
 )
 
 class HomeViewModel(c: AppContainer) : ViewModel() {
-    val state = combine(c.cards.observeCollection(), c.db.prices().observeCollectionHistory()) { owned, history ->
+    val state = combine(c.cards.observeCollection(), c.prices.observeCollectionHistory()) { owned, history ->
         val byDay = history.groupBy { it.epochDay }.toSortedMap().mapValues { e -> e.value.sumOf { it.totalUsd } }
         val total = owned.sumOf { it.totalUsd }
         // Yesterday's total as the price sheet saw it, for the headline change.
@@ -116,13 +118,16 @@ fun HomeScreen(nav: NavController) {
     val vm = appViewModel { HomeViewModel(it) }
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val settings by appContainer().settings.settings.collectAsState()
+    val container = appContainer()
+    val settings by container.settings.settings.collectAsState()
     val work by PriceRefreshWorker.observeNow(context).collectAsStateWithLifecycle(emptyList())
     val refreshing = work.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
 
+    val activeProfile by remember { container.profiles.activeProfile }.collectAsStateWithLifecycle(null)
     ScreenScaffold(
-        title = "Card Vault",
+        title = activeProfile?.name?.let { "$it's cards" } ?: "Card Vault",
         actions = {
+            ProfileSwitcherButton()
             if (refreshing) CircularProgressIndicator(Modifier.size(24.dp).padding(2.dp), strokeWidth = 2.dp)
             else IconButton(onClick = { PriceRefreshWorker.runNow(context) }) { Icon(Icons.Default.Refresh, "Refresh prices") }
             IconButton(onClick = { nav.navigate(Routes.APPEARANCE) }) { Icon(Icons.Default.Palette, "Appearance") }

@@ -3,10 +3,16 @@
 An Android app (built for phones like the Galaxy S22 Ultra, Android 8.0+) for **Magic: The Gathering**,
 **Pokémon** and **One Piece** cards. You can:
 
-- **Scan cards with the camera.** On-device text recognition reads the printed card number
-  (`OP05-119`, `057/191`, `DMU • EN 0123`) and the name, then looks the card up in the right database.
-  You confirm the printing, finish (foil / holo / reverse) and condition. **Quick add** mode adds cards
-  as fast as you can hold them up.
+- **Scan cards with the camera, matched picture-to-picture.** Line the card up with the on-screen frame
+  and take a photo (or let auto-capture snap it once the card number is steady, or pick a photo from your
+  gallery). The app reads all of the card's text on the phone, gathers every printing that could match
+  (same number, same name in every set, alternate arts and parallels), then compares your photo
+  with each printing's official image: artwork, frame and colors. The closest match is shown next to
+  your photo with a match percentage, other printings are ranked below it, and it asks before adding
+  anything to your collection. Finish (holo / reverse / foil), condition and quantity are still chosen there.
+- **Multiple users.** Add people from the avatar at the top of Home (or Settings → Users). Each user has
+  their own collection, binders, decks and value history; card prices are shared. Your existing cards
+  move to a "Me" user automatically.
 - **Track prices from several marketplaces.** Prices are refreshed **once a day** in the background
   (plus a manual refresh button). Each card gets a combined value (average, TCGplayer only,
   Cardmarket only, highest or lowest — your choice), with 24h / 7-day change and price history.
@@ -74,8 +80,8 @@ collections. Camera images never leave the phone.
 Command line: `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Scanning tips
-- Fill the on-screen frame with the card and keep the **bottom edge** (where the card number is) sharp.
-  Tap the screen to focus, and use the flashlight button in dim light.
+- Fill the on-screen frame with the whole card, edges lined up. Avoid glare by tilting the card slightly
+  away from lights; use the flashlight button in dim light. Tap the screen to focus.
 - If a card isn't recognized, choose the game at the top of the screen (instead of *Auto*) or tap
   **Search by name**.
 - Pick a binder at the top of the scanner to file scanned cards straight into it.

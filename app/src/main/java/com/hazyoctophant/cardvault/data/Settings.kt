@@ -36,6 +36,8 @@ data class AppSettings(
     val wallpaperCardImage: String = "",
     /** Animated rainbow sheen on foil / holo cards. */
     val holoEffects: Boolean = true,
+    /** The user whose collection is shown (see ProfileEntity). */
+    val activeProfileId: Long = 1L,
 )
 
 /** Small key/value settings store backed by SharedPreferences. */
@@ -67,6 +69,7 @@ class SettingsStore(context: Context) {
             .putBoolean("backgroundBlur", next.backgroundBlur)
             .putString("wallpaperCardImage", next.wallpaperCardImage)
             .putBoolean("holoEffects", next.holoEffects)
+            .putLong("activeProfileId", next.activeProfileId)
             .apply()
         state.value = next
     }
@@ -92,6 +95,7 @@ class SettingsStore(context: Context) {
         backgroundBlur = prefs.getBoolean("backgroundBlur", false),
         wallpaperCardImage = prefs.getString("wallpaperCardImage", "") ?: "",
         holoEffects = prefs.getBoolean("holoEffects", true),
+        activeProfileId = prefs.getLong("activeProfileId", 1L),
     )
 
     private inline fun <reified E : Enum<E>> enumPref(key: String, default: E): E =

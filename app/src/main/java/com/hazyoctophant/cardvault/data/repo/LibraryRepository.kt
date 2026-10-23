@@ -8,18 +8,22 @@ import com.hazyoctophant.cardvault.data.remote.CatalogCard
 import com.hazyoctophant.cardvault.model.DeckZone
 import com.hazyoctophant.cardvault.model.Game
 import androidx.room.withTransaction
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
 
-/** Binders and decks. */
+/** The active user's binders and decks. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class LibraryRepository(
     private val db: AppDatabase,
     private val cards: CardRepository,
+    private val profiles: ProfileRepository,
 ) {
     // ---- Binders ----
-    fun observeBinders() = db.binders().observeAll()
+    fun observeBinders() = profiles.activeId.flatMapLatest { db.binders().observeAll(it) }
     fun observeBinder(id: Long) = db.binders().observe(id)
-    suspend fun binders() = db.binders().getAll()
+    suspend fun binders() = db.binders().getAll(profiles.currentId)
     suspend fun createBinder(name: String, game: Game?, color: Long, pockets: Int) =
-        db.binders().insert(BinderEntity(name = name, game = game, color = color, pocketsPerPage = pockets))
+        db.binders().insert(BinderEntity(profileId = profiles.currentId, name = name, game = game, color = color, pocketsPerPage = pockets))
     suspend fun updateBinder(binder: BinderEntity) = db.binders().update(binder)
 
     /** Deleting a binder keeps its cards; they just become unfiled. */
@@ -29,13 +33,13 @@ class LibraryRepository(
     }
 
     // ---- Decks ----
-    fun observeDecks() = db.decks().observeAll()
+    fun observeDecks() = profiles.activeId.flatMapLatest { db.decks().observeAll(it) }
     fun observeDeck(id: Long) = db.decks().observe(id)
     fun observeDeckCards(id: Long) = db.decks().observeCards(id)
     suspend fun deckCards(id: Long) = db.decks().getCards(id)
 
     suspend fun createDeck(name: String, game: Game, format: String) =
-        db.decks().insert(DeckEntity(name = name, game = game, format = format))
+        db.decks().insert(DeckEntity(profileId = profiles.currentId, name = name, game = game, format = format))
 
     suspend fun updateDeck(deck: DeckEntity) = db.decks().update(deck.copy(updatedAt = System.currentTimeMillis()))
 

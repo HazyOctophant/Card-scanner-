@@ -11,19 +11,24 @@ import com.hazyoctophant.cardvault.model.Condition
 import com.hazyoctophant.cardvault.model.Finish
 import com.hazyoctophant.cardvault.model.Game
 import com.hazyoctophant.cardvault.scan.ScanHint
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 
-/** Card lookups (remote) and the user's collection (local). */
+/** Card lookups (remote) and the active user's collection (local). */
+@OptIn(ExperimentalCoroutinesApi::class)
 class CardRepository(
     private val db: AppDatabase,
     private val catalogs: Map<Game, CardCatalog>,
     private val prices: PriceRepository,
     private val mtgDb: MtgDatabase,
+    private val profiles: ProfileRepository,
 ) {
-    fun observeCollection(): Flow<List<OwnedCard>> = db.collection().observeAll()
+    fun observeCollection(): Flow<List<OwnedCard>> = profiles.activeId.flatMapLatest { db.collection().observeAll(it) }
     fun observeBinderCards(binderId: Long): Flow<List<OwnedCard>> = db.collection().observeBinder(binderId)
     fun observeCard(cardId: String): Flow<CardEntity?> = db.cards().observe(cardId)
-    fun observeOwned(cardId: String): Flow<List<OwnedCard>> = db.collection().observeForCard(cardId)
+    fun observeOwned(cardId: String): Flow<List<OwnedCard>> =
+        profiles.activeId.flatMapLatest { db.collection().observeForCard(cardId, it) }
 
     suspend fun search(game: Game, query: String): List<CatalogCard> {
         val online = runCatching { catalogs.getValue(game).search(query) }
@@ -56,6 +61,26 @@ class CardRepository(
         return identifyOffline(hint)
     }
 
+    /**
+     * A wide candidate list for picture matching: the precise lookup (card number) plus every printing
+     * of each name that was read, so alternate arts and reprints can be told apart by their images.
+     */
+    suspend fun candidatesForPhoto(hint: ScanHint): List<CatalogCard> {
+        val games = hint.game?.let { listOf(it) } ?: listOf(Game.MTG, Game.POKEMON, Game.ONE_PIECE)
+        val out = LinkedHashMap<String, CatalogCard>()
+        for (game in games) {
+            val g = hint.copy(game = game)
+            runCatching { catalogs.getValue(game).identify(g) }.getOrNull()?.forEach { out.putIfAbsent(it.card.id, it) }
+            for (name in hint.nameCandidates.take(2)) {
+                runCatching { search(game, name) }.getOrNull()?.take(40)?.forEach { out.putIfAbsent(it.card.id, it) }
+            }
+            if (game == Game.MTG && out.isEmpty()) identifyOffline(g).forEach { out.putIfAbsent(it.card.id, it) }
+            // With an unknown game, stop at the first game that produced anything.
+            if (hint.game == null && out.isNotEmpty()) break
+        }
+        return out.values.toList()
+    }
+
     /** Magic cards by OCR'd name from the offline database (works with no signal). */
     private suspend fun identifyOffline(hint: ScanHint): List<CatalogCard> {
         for (name in hint.nameCandidates) {
@@ -81,13 +106,15 @@ class CardRepository(
         purchasePrice: Double? = null,
     ): Long {
         save(card)
-        val existing = db.collection().findStack(card.card.id, finish, condition, binderId)
+        val profileId = profiles.currentId
+        val existing = db.collection().findStack(profileId, card.card.id, finish, condition, binderId)
         return if (existing != null) {
             db.collection().update(existing.copy(quantity = existing.quantity + quantity))
             existing.id
         } else {
             db.collection().insert(
                 CollectionEntryEntity(
+                    profileId = profileId,
                     cardId = card.card.id,
                     quantity = quantity,
                     finish = finish,
@@ -113,5 +140,5 @@ class CardRepository(
         entries.forEach { db.collection().update(it.copy(binderId = binderId)) }
     }
 
-    suspend fun ownedQuantity(cardId: String): Int = db.collection().ownedQuantity(cardId)
+    suspend fun ownedQuantity(cardId: String): Int = db.collection().ownedQuantity(cardId, profiles.currentId)
 }

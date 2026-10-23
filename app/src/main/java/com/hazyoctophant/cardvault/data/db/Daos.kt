@@ -35,27 +35,27 @@ interface CardDao {
 @Dao
 interface CollectionDao {
     @Transaction
-    @Query("SELECT * FROM collection ORDER BY addedAt DESC")
-    fun observeAll(): Flow<List<OwnedCard>>
+    @Query("SELECT * FROM collection WHERE profileId = :profileId ORDER BY addedAt DESC")
+    fun observeAll(profileId: Long): Flow<List<OwnedCard>>
 
     @Transaction
-    @Query("SELECT * FROM collection ORDER BY addedAt DESC")
-    suspend fun getAll(): List<OwnedCard>
+    @Query("SELECT * FROM collection WHERE profileId = :profileId ORDER BY addedAt DESC")
+    suspend fun getAll(profileId: Long): List<OwnedCard>
 
     @Transaction
     @Query("SELECT * FROM collection WHERE binderId = :binderId ORDER BY addedAt ASC")
     fun observeBinder(binderId: Long): Flow<List<OwnedCard>>
 
     @Transaction
-    @Query("SELECT * FROM collection WHERE cardId = :cardId")
-    fun observeForCard(cardId: String): Flow<List<OwnedCard>>
+    @Query("SELECT * FROM collection WHERE cardId = :cardId AND profileId = :profileId")
+    fun observeForCard(cardId: String, profileId: Long): Flow<List<OwnedCard>>
 
     @Query(
-        """SELECT * FROM collection WHERE cardId = :cardId AND finish = :finish
+        """SELECT * FROM collection WHERE profileId = :profileId AND cardId = :cardId AND finish = :finish
            AND condition = :condition AND ((binderId IS NULL AND :binderId IS NULL) OR binderId = :binderId)
            LIMIT 1"""
     )
-    suspend fun findStack(cardId: String, finish: Finish, condition: Condition, binderId: Long?): CollectionEntryEntity?
+    suspend fun findStack(profileId: Long, cardId: String, finish: Finish, condition: Condition, binderId: Long?): CollectionEntryEntity?
 
     @Query("SELECT * FROM collection WHERE id = :id")
     suspend fun get(id: Long): CollectionEntryEntity?
@@ -72,8 +72,11 @@ interface CollectionDao {
     @Query("UPDATE collection SET binderId = NULL WHERE binderId = :binderId")
     suspend fun clearBinder(binderId: Long)
 
-    @Query("SELECT COALESCE(SUM(quantity), 0) FROM collection WHERE cardId = :cardId")
-    suspend fun ownedQuantity(cardId: String): Int
+    @Query("SELECT COALESCE(SUM(quantity), 0) FROM collection WHERE cardId = :cardId AND profileId = :profileId")
+    suspend fun ownedQuantity(cardId: String, profileId: Long): Int
+
+    @Query("DELETE FROM collection WHERE profileId = :profileId")
+    suspend fun deleteForProfile(profileId: Long)
 }
 
 @Dao
@@ -113,23 +116,29 @@ interface PriceDao {
     @Upsert
     suspend fun upsertCollectionHistory(rows: List<CollectionValueHistoryEntity>)
 
-    @Query("SELECT * FROM collection_value_history ORDER BY epochDay ASC")
-    fun observeCollectionHistory(): Flow<List<CollectionValueHistoryEntity>>
+    @Query("SELECT * FROM collection_value_history WHERE profileId = :profileId ORDER BY epochDay ASC")
+    fun observeCollectionHistory(profileId: Long): Flow<List<CollectionValueHistoryEntity>>
+
+    @Query("DELETE FROM collection_value_history WHERE profileId = :profileId")
+    suspend fun deleteHistoryForProfile(profileId: Long)
 }
 
 @Dao
 interface BinderDao {
     @Query(
         """SELECT b.*, COALESCE((SELECT SUM(quantity) FROM collection c WHERE c.binderId = b.id), 0) AS cardCount
-           FROM binders b ORDER BY b.createdAt ASC"""
+           FROM binders b WHERE b.profileId = :profileId ORDER BY b.createdAt ASC"""
     )
-    fun observeAll(): Flow<List<BinderSummary>>
+    fun observeAll(profileId: Long): Flow<List<BinderSummary>>
 
     @Query("SELECT * FROM binders WHERE id = :id")
     fun observe(id: Long): Flow<BinderEntity?>
 
-    @Query("SELECT * FROM binders ORDER BY createdAt ASC")
-    suspend fun getAll(): List<BinderEntity>
+    @Query("SELECT * FROM binders WHERE profileId = :profileId ORDER BY createdAt ASC")
+    suspend fun getAll(profileId: Long): List<BinderEntity>
+
+    @Query("DELETE FROM binders WHERE profileId = :profileId")
+    suspend fun deleteForProfile(profileId: Long)
 
     @Insert
     suspend fun insert(binder: BinderEntity): Long
@@ -145,9 +154,15 @@ interface BinderDao {
 interface DeckDao {
     @Query(
         """SELECT d.*, COALESCE((SELECT SUM(quantity) FROM deck_cards dc WHERE dc.deckId = d.id), 0) AS cardCount
-           FROM decks d ORDER BY d.updatedAt DESC"""
+           FROM decks d WHERE d.profileId = :profileId ORDER BY d.updatedAt DESC"""
     )
-    fun observeAll(): Flow<List<DeckSummary>>
+    fun observeAll(profileId: Long): Flow<List<DeckSummary>>
+
+    @Query("DELETE FROM deck_cards WHERE deckId IN (SELECT id FROM decks WHERE profileId = :profileId)")
+    suspend fun deleteCardsForProfile(profileId: Long)
+
+    @Query("DELETE FROM decks WHERE profileId = :profileId")
+    suspend fun deleteForProfile(profileId: Long)
 
     @Query("SELECT * FROM decks WHERE id = :id")
     fun observe(id: Long): Flow<DeckEntity?>
@@ -186,4 +201,25 @@ interface DeckDao {
 
     @Query("UPDATE decks SET updatedAt = :now WHERE id = :deckId")
     suspend fun touch(deckId: Long, now: Long = System.currentTimeMillis())
+}
+
+@Dao
+interface ProfileDao {
+    @Query("SELECT * FROM profiles ORDER BY createdAt ASC")
+    fun observeAll(): Flow<List<ProfileEntity>>
+
+    @Query("SELECT * FROM profiles ORDER BY createdAt ASC")
+    suspend fun getAll(): List<ProfileEntity>
+
+    @Query("SELECT * FROM profiles WHERE id = :id")
+    fun observe(id: Long): Flow<ProfileEntity?>
+
+    @Insert
+    suspend fun insert(profile: ProfileEntity): Long
+
+    @Update
+    suspend fun update(profile: ProfileEntity)
+
+    @Delete
+    suspend fun delete(profile: ProfileEntity)
 }

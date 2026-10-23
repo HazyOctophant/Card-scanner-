@@ -16,7 +16,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +31,7 @@ import com.hazyoctophant.cardvault.model.ValuationMode
 import com.hazyoctophant.cardvault.ui.Routes
 import com.hazyoctophant.cardvault.pricing.PriceRefreshWorker
 import com.hazyoctophant.cardvault.ui.appContainer
+import com.hazyoctophant.cardvault.ui.components.ProfilesDialog
 import com.hazyoctophant.cardvault.ui.components.ScreenScaffold
 import com.hazyoctophant.cardvault.ui.components.SectionTitle
 import com.hazyoctophant.cardvault.ui.formatTimestamp
@@ -43,6 +46,13 @@ fun SettingsScreen(nav: NavController) {
 
     ScreenScaffold(title = "Settings", nav = nav) { padding ->
         Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()).verticalScroll(rememberScrollState())) {
+            SectionTitle("Users")
+            var showUsers by remember { mutableStateOf(false) }
+            TextButton(onClick = { showUsers = true }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Text("Manage users and switch collections")
+            }
+            if (showUsers) ProfilesDialog(onDismiss = { showUsers = false })
+
             SectionTitle("Appearance")
             TextButton(onClick = { nav.navigate(Routes.APPEARANCE) }, modifier = Modifier.padding(horizontal = 8.dp)) {
                 Text("Themes, colors and background artwork")

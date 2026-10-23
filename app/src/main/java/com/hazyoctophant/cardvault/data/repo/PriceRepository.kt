@@ -11,6 +11,8 @@ import com.hazyoctophant.cardvault.data.remote.CatalogCard
 import com.hazyoctophant.cardvault.data.remote.ExchangeRates
 import com.hazyoctophant.cardvault.model.Game
 import com.hazyoctophant.cardvault.pricing.Valuation
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
@@ -24,11 +26,13 @@ data class RefreshResult(
 )
 
 /** Fetches prices from every source, blends them into per-card values, and keeps daily history. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class PriceRepository(
     private val db: AppDatabase,
     private val settings: SettingsStore,
     private val fx: ExchangeRates,
     private val catalogs: Map<Game, CardCatalog>,
+    private val profiles: ProfileRepository,
 ) {    private val refreshLock = Mutex()
 
     /** Saves the prices that came with a freshly looked-up card and updates its value. */
@@ -39,7 +43,7 @@ class PriceRepository(
 
     /** Re-download every owned (or deck) card from its database, then recompute all values. */
     suspend fun refreshAll(): RefreshResult = refreshLock.withLock {
-        val before = db.collection().getAll().sumOf { it.totalUsd }
+        val before = db.collection().getAll(profiles.currentId).sumOf { it.totalUsd }
         val errors = mutableListOf<String>()
         fx.eurToUsd()?.let { rate -> settings.update { it.copy(eurToUsd = rate) } }
 
@@ -57,7 +61,7 @@ class PriceRepository(
             }
         }
         recomputeValues(null)
-        val after = db.collection().getAll().sumOf { it.totalUsd }
+        val after = db.collection().getAll(profiles.currentId).sumOf { it.totalUsd }
         settings.update {
             it.copy(lastRefreshAt = System.currentTimeMillis(), lastRefreshError = errors.joinToString("\n").ifEmpty { null })
         }
@@ -88,14 +92,18 @@ class PriceRepository(
         recordCollectionTotals()
     }
 
-    /** Snapshot today's total value per game for the dashboard chart. */
+    /** Snapshot today's total value per user and game for the dashboard chart. */
     suspend fun recordCollectionTotals() {
         val today = LocalDate.now().toEpochDay()
-        val owned: List<OwnedCard> = db.collection().getAll()
-        val rows = Game.entries.map { game ->
-            val cards = owned.filter { it.card.game == game }
-            CollectionValueHistoryEntity(today, game, cards.sumOf { it.totalUsd }, cards.sumOf { it.entry.quantity })
+        val rows = profiles.all().flatMap { profile ->
+            val owned: List<OwnedCard> = db.collection().getAll(profile.id)
+            Game.entries.map { game ->
+                val cards = owned.filter { it.card.game == game }
+                CollectionValueHistoryEntity(profile.id, today, game, cards.sumOf { it.totalUsd }, cards.sumOf { it.entry.quantity })
+            }
         }
         db.prices().upsertCollectionHistory(rows)
     }
+
+    fun observeCollectionHistory() = profiles.activeId.flatMapLatest { db.prices().observeCollectionHistory(it) }
 }

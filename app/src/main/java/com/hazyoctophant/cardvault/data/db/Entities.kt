@@ -1,5 +1,6 @@
 package com.hazyoctophant.cardvault.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
@@ -53,9 +54,11 @@ data class CardEntity(
 }
 
 /** One stack of identical cards that the user owns. */
-@Entity(tableName = "collection", indices = [Index("cardId"), Index("binderId")])
+@Entity(tableName = "collection", indices = [Index("cardId"), Index("binderId"), Index("profileId")])
 data class CollectionEntryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** Which user's collection this belongs to (see [ProfileEntity]). */
+    @ColumnInfo(defaultValue = "1") val profileId: Long = 1,
     val cardId: String,
     val quantity: Int = 1,
     val finish: Finish = Finish.NORMAL,
@@ -100,18 +103,20 @@ data class PriceHistoryEntity(
     val valueUsd: Double,
 )
 
-/** Daily total collection value per game, for the dashboard chart. */
-@Entity(tableName = "collection_value_history", primaryKeys = ["epochDay", "game"])
+/** Daily total collection value per user and game, for the dashboard chart. */
+@Entity(tableName = "collection_value_history", primaryKeys = ["profileId", "epochDay", "game"])
 data class CollectionValueHistoryEntity(
+    val profileId: Long,
     val epochDay: Long,
     val game: Game,
     val totalUsd: Double,
     val cardCount: Int,
 )
 
-@Entity(tableName = "binders")
+@Entity(tableName = "binders", indices = [Index("profileId")])
 data class BinderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(defaultValue = "1") val profileId: Long = 1,
     val name: String,
     val game: Game? = null,
     /** ARGB color for the binder cover. */
@@ -121,9 +126,10 @@ data class BinderEntity(
     val createdAt: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "decks")
+@Entity(tableName = "decks", indices = [Index("profileId")])
 data class DeckEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(defaultValue = "1") val profileId: Long = 1,
     val name: String,
     val game: Game,
     /** e.g. "standard", "commander", "standard" (Pokémon), "standard" (One Piece). */
@@ -143,6 +149,16 @@ data class DeckCardEntity(
     val cardId: String,
     val zone: DeckZone = DeckZone.MAIN,
     val quantity: Int = 1,
+)
+
+/** A person using the app; each has their own collection, binders and decks. */
+@Entity(tableName = "profiles")
+data class ProfileEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** ARGB avatar color. */
+    val color: Long = 0xFF3D5AFE,
+    val createdAt: Long = System.currentTimeMillis(),
 )
 
 // ---- Query result types ----
