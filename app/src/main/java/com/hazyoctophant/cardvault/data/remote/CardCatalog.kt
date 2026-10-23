@@ -20,4 +20,7 @@ interface CardCatalog {
 
     /** Re-fetch the given cards (with current prices). Cards that can't be found are omitted. */
     suspend fun refresh(cards: List<CardEntity>): List<CatalogCard>
+
+    /** Full data and prices for cards by app id ("mtg:…", "pkm:…", "op:…"), e.g. matches from the visual index. */
+    suspend fun byIds(ids: List<String>): List<CatalogCard>
 }

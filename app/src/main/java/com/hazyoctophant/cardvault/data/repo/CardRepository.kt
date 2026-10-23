@@ -10,6 +10,7 @@ import com.hazyoctophant.cardvault.data.remote.CatalogCard
 import com.hazyoctophant.cardvault.model.Condition
 import com.hazyoctophant.cardvault.model.Finish
 import com.hazyoctophant.cardvault.model.Game
+import com.hazyoctophant.cardvault.scan.MatchScorer
 import com.hazyoctophant.cardvault.scan.ScanHint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -75,10 +76,12 @@ class CardRepository(
                 runCatching { search(game, name) }.getOrNull()?.take(40)?.forEach { out.putIfAbsent(it.card.id, it) }
             }
             if (game == Game.MTG && out.isEmpty()) identifyOffline(g).forEach { out.putIfAbsent(it.card.id, it) }
-            // With an unknown game, stop at the first game that produced anything.
-            if (hint.game == null && out.isNotEmpty()) break
         }
-        return out.values.toList()
+        if (hint.game != null) return out.values.toList()
+        // Game unknown: fuzzy name searches always return *something*, so only keep cards whose name the
+        // OCR actually read; otherwise a misread would turn into a random card from another game.
+        val read = hint.nameCandidates.joinToString(" ")
+        return out.values.filter { MatchScorer.nameScore(read, it.card.name) >= 0.5f }
     }
 
     /** Magic cards by OCR'd name from the offline database (works with no signal). */
@@ -88,6 +91,21 @@ class CardRepository(
             if (found.isNotEmpty()) return found.map { it.toCatalogCard() }
         }
         return emptyList()
+    }
+
+    /** Full data and prices for cards by id, across games. */
+    suspend fun byIds(ids: List<String>): List<CatalogCard> {
+        val byGame = ids.groupBy { id ->
+            when {
+                id.startsWith("mtg:") -> Game.MTG
+                id.startsWith("pkm:") -> Game.POKEMON
+                else -> Game.ONE_PIECE
+            }
+        }
+        val found = byGame.flatMap { (game, gameIds) ->
+            runCatching { catalogs.getValue(game).byIds(gameIds) }.getOrDefault(emptyList())
+        }.associateBy { it.card.id }
+        return ids.mapNotNull { found[it] } // keep the caller's order
     }
 
     /** Stores a card (and its prices) that came from a remote database. */

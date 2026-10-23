@@ -46,6 +46,25 @@ object MatchScorer {
         }
     }
 
+    /** Fraction of a card name's words that the OCR found (0..1). */
+    fun nameScore(ocrText: String, name: String): Float {
+        val nameWords = words(name)
+        if (nameWords.isEmpty()) return 0f
+        val seen = words(ocrText)
+        return nameWords.count { it in seen }.toFloat() / nameWords.size
+    }
+
+    /**
+     * Re-ranks visual library hits with what the OCR read: picture similarity first, then the name and
+     * the printed number as tie-breakers between look-alike printings.
+     */
+    fun rerankHits(hits: List<IndexHit>, hint: ScanHint, ocrText: String): List<Pair<IndexHit, Float>> = hits.map { h ->
+        val e = h.entry
+        val asCard = CardEntity(e.id, h.game, e.name, e.setCode, "", e.number)
+        val score = h.similarity + 0.25f * nameScore(ocrText, e.name) + if (numberMatches(hint, asCard)) 0.15f else 0f
+        h to score
+    }.sortedByDescending { it.second }
+
     fun <T> rank(
         candidates: List<T>,
         cardOf: (T) -> CardEntity,

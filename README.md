@@ -3,13 +3,15 @@
 An Android app (built for phones like the Galaxy S22 Ultra, Android 8.0+) for **Magic: The Gathering**,
 **Pokémon** and **One Piece** cards. You can:
 
-- **Scan cards with the camera, matched picture-to-picture.** Line the card up with the on-screen frame
-  and take a photo (or let auto-capture snap it once the card number is steady, or pick a photo from your
-  gallery). The app reads all of the card's text on the phone, gathers every printing that could match
-  (same number, same name in every set, alternate arts and parallels), then compares your photo
-  with each printing's official image: artwork, frame and colors. The closest match is shown next to
-  your photo with a match percentage, other printings are ranked below it, and it asks before adding
-  anything to your collection. Finish (holo / reverse / foil), condition and quantity are still chosen there.
+- **Scan cards with the camera, recognised by their picture.** Line the card up with the on-screen frame
+  and take a photo (or let auto-capture snap it, or pick a photo from your gallery). With the **card
+  library** downloaded (Settings → Card recognition library, or the banner on the Scan tab), your photo
+  is compared with the picture of *every* known card (about 45,000 Magic artworks, every English Pokémon
+  card, and every One Piece card including parallels) right on the phone, so recognition doesn't depend on
+  reading the text. The card's name and printed number, read on the phone, then break ties between
+  look-alike printings, and every printing of the best card is offered so you can pick the exact set. The
+  best match is shown next to your photo with a match percentage, and it asks before adding anything.
+  Finish (holo / reverse / foil), condition and quantity are chosen there.
 - **Multiple users.** Add people from the avatar at the top of Home (or Settings → Users). Each user has
   their own collection, binders, decks and value history; card prices are shared. Your existing cards
   move to a "Me" user automatically.
@@ -56,12 +58,17 @@ An Android app (built for phones like the Galaxy S22 Ultra, Android 8.0+) for **
 | Game | Card data | Prices |
 |---|---|---|
 | Magic | [Scryfall](https://scryfall.com/docs/api) API + [bulk data](https://scryfall.com/docs/api/bulk-data) (offline database) | TCGplayer (USD), Cardmarket (EUR), MTGO (tix, shown for info only) |
-| Pokémon | [Pokémon TCG API](https://pokemontcg.io) | TCGplayer (USD, per printing), Cardmarket (EUR) |
+| Pokémon | [TCGdex](https://tcgdex.dev) | TCGplayer (USD, per printing), Cardmarket (EUR) |
 | One Piece | [OPTCG API](https://optcgapi.com) | TCGplayer market price |
 
 Euro prices are converted to USD using the ECB rate from [frankfurter.app](https://frankfurter.app).
-No API keys are required. A free Pokémon TCG API key (Settings) raises that API's rate limit for big
-collections. Camera images never leave the phone.
+No API keys are required. Camera images never leave the phone.
+
+### The card library (visual index)
+The `Card image index` GitHub workflow (`.github/workflows/card-index.yml`, code in `indexer/`) downloads
+every card image, computes a compact visual signature for each (the same code the app uses for photos,
+`scan/VisualSignature.kt`), and publishes one file per game to this repository's `card-index` release.
+It runs weekly to pick up new sets; run it manually from the Actions tab to rebuild immediately.
 
 ## Installing on your phone
 
@@ -91,6 +98,7 @@ Command line: `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-deb
 app/src/main/java/com/hazyoctophant/cardvault/
   data/db        Room database: cards, collection, prices, price history, binders, decks
   data/mtgdb     Offline Magic database: bulk import, filters (SQL + Scryfall syntax), weekly update
+  indexer/       JVM tool (run in GitHub Actions) that builds the visual card library
   data/remote    Scryfall, Pokémon TCG API, OPTCG API and exchange-rate clients
   data/repo      Collection, pricing (daily refresh + valuation) and binder/deck repositories
   scan           OCR text parser, ML Kit analyzer, scanner state machine

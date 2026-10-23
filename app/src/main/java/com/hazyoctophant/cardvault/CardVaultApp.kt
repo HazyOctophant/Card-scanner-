@@ -12,7 +12,9 @@ import com.hazyoctophant.cardvault.data.mtgdb.MtgDatabaseWorker
 import com.hazyoctophant.cardvault.data.remote.ExchangeRates
 import com.hazyoctophant.cardvault.data.remote.Http
 import com.hazyoctophant.cardvault.data.remote.OnePieceCatalog
-import com.hazyoctophant.cardvault.data.remote.PokemonTcgCatalog
+import com.hazyoctophant.cardvault.data.remote.TcgdexCatalog
+import com.hazyoctophant.cardvault.scan.CardIndexRepository
+import com.hazyoctophant.cardvault.scan.CardIndexWorker
 import com.hazyoctophant.cardvault.data.remote.ScryfallCatalog
 import com.hazyoctophant.cardvault.data.repo.CardRepository
 import com.hazyoctophant.cardvault.data.repo.LibraryRepository
@@ -31,7 +33,7 @@ class AppContainer(context: Context) {
     private val scryfall = ScryfallCatalog(http)
     private val catalogs = mapOf(
         Game.MTG to scryfall,
-        Game.POKEMON to PokemonTcgCatalog(http) { settings.current.pokemonApiKey },
+        Game.POKEMON to TcgdexCatalog(http),
         Game.ONE_PIECE to OnePieceCatalog(http, context.cacheDir),
     )
     val profiles = ProfileRepository(db, settings)
@@ -39,6 +41,7 @@ class AppContainer(context: Context) {
     val mtgDb = MtgDatabase(db, http, scryfall, settings)
     val cards = CardRepository(db, catalogs, prices, mtgDb, profiles)
     val imageMatcher = CardImageMatcher(http)
+    val cardIndex = CardIndexRepository(context, http)
     val library = LibraryRepository(db, cards, profiles)
 }
 
@@ -51,6 +54,7 @@ class CardVaultApp : Application() {
         container = AppContainer(this)
         PriceRefreshWorker.createChannel(this)
         MainScope().launch { container.profiles.ensureValid() }
+        if (container.cardIndex.installed.value.isNotEmpty()) CardIndexWorker.scheduleWeekly(this)
         PriceRefreshWorker.schedule(this, container.settings.current.dailyRefresh)
         container.settings.current.let { s ->
             // Keep the offline Magic database fresh once it has been downloaded.

@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CardVault"
 include(":app")
+include(":indexer")

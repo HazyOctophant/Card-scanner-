@@ -1,0 +1,56 @@
+name: Card image index
+
+# Fingerprints every card image (Magic, Pokémon, One Piece) and publishes one index file per game as
+# assets of the "card-index" release. The app downloads these to recognise cards from photos.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1" # weekly, to pick up new sets
+  push:
+    branches: [ main, "claude/**" ]
+    paths:
+      - "indexer/**"
+      - "app/src/main/java/com/hazyoctophant/cardvault/scan/VisualSignature.kt"
+      - "app/src/main/java/com/hazyoctophant/cardvault/scan/CardIndex.kt"
+      - ".github/workflows/card-index.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: card-index
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make sure the release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view card-index --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create card-index --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+              --title "Card image index" --notes "Visual fingerprints of every card image, downloaded by the app for photo recognition. Rebuilt weekly."
+
+  build:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        game: [ MTG, POKEMON, ONE_PIECE ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build index
+        run: ./gradlew --no-daemon :indexer:run --args="${{ matrix.game }} $GITHUB_WORKSPACE/out/${{ matrix.game }}.cvix.gz"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload card-index "out/${{ matrix.game }}.cvix.gz" --clobber --repo "$GITHUB_REPOSITORY"

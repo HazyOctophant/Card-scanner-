@@ -14,7 +14,9 @@ import com.hazyoctophant.cardvault.model.Condition
 import com.hazyoctophant.cardvault.model.Finish
 import com.hazyoctophant.cardvault.model.Game
 import com.hazyoctophant.cardvault.pricing.Valuation
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -113,15 +115,42 @@ class ScanViewModel(private val c: AppContainer) : ViewModel() {
                     mtgNumber = parsed.mtgNumber ?: live?.mtgNumber,
                     nameCandidates = (parsed.nameCandidates + live?.nameCandidates.orEmpty()).distinct(),
                 )
-                _state.update { it.copy(hint = hint, message = "Finding every printing…") }
-                val candidates = c.cards.candidatesForPhoto(hint)
-                if (candidates.isEmpty()) {
-                    _state.update { it.copy(phase = ScanPhase.NOT_FOUND, message = null) }
-                    return@launch
+                _state.update { it.copy(hint = hint) }
+                val ocrText = lines.joinToString("\n")
+                val pixels = withContext(Dispatchers.Default) { c.imageMatcher.pixelsOf(photo) }
+
+                // 1) Picture search across the whole downloaded card library (doesn't depend on reading text).
+                val games = _state.value.forcedGame?.let { listOf(it) } ?: Game.entries
+                val indexes = games.mapNotNull { c.cardIndex.index(it) }
+                var ranked: List<ScoredMatch<CatalogCard>> = emptyList()
+                if (indexes.isNotEmpty()) {
+                    _state.update { it.copy(message = "Comparing with %,d cards…".format(indexes.sumOf { idx -> idx.size })) }
+                    val hits = MatchScorer.rerankHits(c.imageMatcher.searchIndexes(pixels, indexes), hint, ocrText).take(10)
+                    if (hits.isNotEmpty()) {
+                        _state.update { it.copy(message = "Getting prices…") }
+                        val resolved = c.cards.byIds(hits.map { it.first.entry.id })
+                        // Reprints share artwork: add every printing of the best card so the right set can be chosen.
+                        val best = hits.first().first
+                        val reprints = runCatching { c.cards.search(best.game, best.entry.name) }.getOrDefault(emptyList())
+                            .filter { it.card.name.equals(best.entry.name, true) }
+                        val known = hits.associate { it.first.entry.id to it.first.similarity }
+                        ranked = c.imageMatcher.rank(pixels, (resolved + reprints).distinctBy { it.card.id }, hint, ocrText, known)
+                    }
                 }
-                _state.update { it.copy(message = "Comparing ${candidates.size} card images…") }
-                val ranked = c.imageMatcher.rank(photo, candidates, hint, lines.joinToString("\n"))
-                _state.update { it.copy(phase = ScanPhase.RESULTS, matches = ranked, message = null) }
+
+                // 2) Without a library (or if it found nothing): look up by the text that was read.
+                if (ranked.isEmpty()) {
+                    _state.update { it.copy(message = "Finding every printing…") }
+                    val candidates = c.cards.candidatesForPhoto(hint)
+                    if (candidates.isNotEmpty()) {
+                        _state.update { it.copy(message = "Comparing ${candidates.size} card images…") }
+                        ranked = c.imageMatcher.rank(pixels, candidates, hint, ocrText)
+                    }
+                }
+                _state.update {
+                    if (ranked.isEmpty()) it.copy(phase = ScanPhase.NOT_FOUND, message = null)
+                    else it.copy(phase = ScanPhase.RESULTS, matches = ranked, message = null)
+                }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _state.update { it.copy(phase = ScanPhase.ERROR, message = "Couldn't look the card up: ${e.message}") }

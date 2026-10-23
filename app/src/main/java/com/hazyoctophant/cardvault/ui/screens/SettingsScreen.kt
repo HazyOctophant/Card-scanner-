@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -31,6 +30,7 @@ import com.hazyoctophant.cardvault.model.ValuationMode
 import com.hazyoctophant.cardvault.ui.Routes
 import com.hazyoctophant.cardvault.pricing.PriceRefreshWorker
 import com.hazyoctophant.cardvault.ui.appContainer
+import com.hazyoctophant.cardvault.ui.components.CardLibraryPanel
 import com.hazyoctophant.cardvault.ui.components.ProfilesDialog
 import com.hazyoctophant.cardvault.ui.components.ScreenScaffold
 import com.hazyoctophant.cardvault.ui.components.SectionTitle
@@ -113,28 +113,17 @@ fun SettingsScreen(nav: NavController) {
                 }
             }
 
-            SectionTitle("Pokémon TCG API key (optional)")
-            OutlinedTextField(
-                value = settings.pokemonApiKey,
-                onValueChange = { v -> container.settings.update { it.copy(pokemonApiKey = v) } },
-                placeholder = { Text("Free key from dev.pokemontcg.io") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            )
-            Text(
-                "Works without a key, but a free key gives much higher rate limits for big collections.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(16.dp, 4.dp),
-            )
+            SectionTitle("Card recognition library")
+            CardLibraryPanel()
 
             SectionTitle("Data sources")
             Text(
                 """
                 • Magic: Scryfall — card database (bulk data), TCGplayer (USD), Cardmarket (EUR) and MTGO prices.
-                • Pokémon: Pokémon TCG API — TCGplayer (USD, per printing) and Cardmarket (EUR).
+                • Pokémon: TCGdex — card data and images, TCGplayer (USD, per printing) and Cardmarket (EUR) prices.
                 • One Piece: OPTCG API — TCGplayer market prices.
                 • Exchange rate: European Central Bank via frankfurter.app.
-                Card text recognition runs on your phone; camera images are never uploaded.
+                Card recognition (text and picture) runs on your phone; camera images are never uploaded.
                 Card Vault isn't affiliated with Wizards of the Coast, The Pokémon Company, Bandai, or any marketplace.
                 """.trimIndent(),
                 style = MaterialTheme.typography.bodySmall,

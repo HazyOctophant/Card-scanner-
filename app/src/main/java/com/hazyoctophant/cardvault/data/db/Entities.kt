@@ -13,7 +13,7 @@ import com.hazyoctophant.cardvault.model.Game
 import com.hazyoctophant.cardvault.model.PriceSource
 
 /**
- * A card printing from one of the card databases (Scryfall, Pokémon TCG API, OPTCG API).
+ * A card printing from one of the card databases (Scryfall, TCGdex, OPTCG API).
  * [id] is namespaced by game, e.g. "mtg:<scryfall id>", "pkm:sv3-125", "op:OP01-001_p1".
  */
 @Entity(tableName = "cards", indices = [Index("game"), Index("name")])

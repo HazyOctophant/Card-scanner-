@@ -55,12 +55,14 @@ class ScryfallCatalog(private val http: Http) : CardCatalog {
         return emptyList()
     }
 
-    override suspend fun refresh(cards: List<CardEntity>): List<CatalogCard> {
+    override suspend fun refresh(cards: List<CardEntity>): List<CatalogCard> = byIds(cards.map { it.id })
+
+    override suspend fun byIds(ids: List<String>): List<CatalogCard> {
         val out = mutableListOf<CatalogCard>()
-        cards.chunked(75).forEachIndexed { i, chunk ->
+        ids.distinct().chunked(75).forEachIndexed { i, chunk ->
             if (i > 0) delay(120) // Scryfall asks for 50–100 ms between requests.
             val body = buildJsonObject {
-                put("identifiers", JsonArray(chunk.map { buildJsonObject { put("id", it.id.removePrefix("mtg:")) } }))
+                put("identifiers", JsonArray(chunk.map { buildJsonObject { put("id", it.removePrefix("mtg:")) } }))
             }
             http.post("$base/cards/collection", body.toString()).obj()
                 ?.arr("data")?.mapNotNullTo(out) { it.obj()?.let(::parseCard) }

@@ -43,22 +43,56 @@ class ImageMatchTest {
         }
     }
 
-    @Test
-    fun photoMatchesItsOwnPrintingAboveLookAlikes() {
-        val references = (10..30).associateWith { CardSignature.of(card(it), w, h, Game.MTG) }
-        val shot = CardSignature.of(photo(card(17)), w, h, Game.MTG)
-        val ranked = references.entries.sortedByDescending { shot.similarity(it.value) }
-        assertEquals(17, ranked.first().key)
-        val best = shot.similarity(ranked[0].value)
-        val second = shot.similarity(ranked[1].value)
-        assertTrue("best=$best second=$second", best > 0.75f && best - second > 0.15f)
+    /** A photo where the card is a bit smaller than the frame and off-centre (background around it). */
+    private fun misaligned(src: IntArray): IntArray {
+        val out = IntArray(w * h) { 0xFF6B4F3A.toInt() } // wooden table
+        val scale = 0.92f
+        val ox = 6; val oy = 4
+        for (y in 0 until h) for (x in 0 until w) {
+            val sx = ((x - ox) / scale).toInt(); val sy = ((y - oy) / scale).toInt()
+            if (sx in 0 until w && sy in 0 until h) out[y * w + x] = src[sy * w + sx]
+        }
+        return photo(out)
+    }
+
+    /** Warm indoor light: everything shifted toward orange. */
+    private fun warm(src: IntArray) = IntArray(src.size) { i ->
+        val p = src[i]
+        val r = (((p shr 16) and 0xFF) * 1.1 + 20).toInt().coerceAtMost(255)
+        val g = ((p shr 8) and 0xFF)
+        val b = (((p) and 0xFF) * 0.75).toInt()
+        (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+    }
+
+    private fun index(seeds: IntRange): CardIndex {
+        val entries = seeds.map { IndexEntry("mtg:$it", "Card $it", "SET", "$it", VisualSignature.of(card(it), w, h, Game.MTG)) }
+        val bytes = java.io.ByteArrayOutputStream().also { CardIndex.write(it, Game.MTG, "test", entries) }.toByteArray()
+        return CardIndex.read(bytes.inputStream())
     }
 
     @Test
-    fun identicalImagesScoreNearOne() {
-        val px = card(5)
-        val a = ImageFingerprint.of(px, w, h)
-        assertTrue(a.similarity(ImageFingerprint.of(px, w, h)) > 0.99f)
+    fun photoMatchesItsOwnPrintingAboveLookAlikes() {
+        val idx = index(10..400)
+        val hits = idx.search(PhotoSignature.of(photo(card(17)), w, h, Game.MTG))
+        assertEquals("mtg:17", hits.first().entry.id)
+        assertTrue("best=${hits[0].similarity} second=${hits[1].similarity}", hits[0].similarity - hits[1].similarity > 0.15f)
+    }
+
+    @Test
+    fun misalignedAndWarmLitPhotosStillMatch() {
+        val idx = index(10..400)
+        for (seed in listOf(23, 150, 333)) {
+            val shot = warm(misaligned(card(seed)))
+            assertEquals("mtg:$seed", idx.search(PhotoSignature.of(shot, w, h, Game.MTG)).first().entry.id)
+        }
+    }
+
+    @Test
+    fun indexRoundTripKeepsEntries() {
+        val idx = index(1..5)
+        assertEquals(5, idx.size)
+        assertEquals("Card 3", idx.entry(2).name)
+        assertTrue(idx.entry(2).signature.similarity(VisualSignature.of(card(3), w, h, Game.MTG)) > 0.99f)
     }
 
     @Test

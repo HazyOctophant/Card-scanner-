@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -106,6 +107,7 @@ import com.hazyoctophant.cardvault.ui.Routes
 import com.hazyoctophant.cardvault.ui.appContainer
 import com.hazyoctophant.cardvault.ui.appViewModel
 import com.hazyoctophant.cardvault.ui.components.CardImage
+import com.hazyoctophant.cardvault.ui.components.CardLibraryPanel
 import com.hazyoctophant.cardvault.ui.components.ChoiceRow
 import com.hazyoctophant.cardvault.ui.components.EmptyState
 import com.hazyoctophant.cardvault.ui.components.QuantityStepper
@@ -150,6 +152,16 @@ fun ScanScreen(nav: NavController) {
     val scope = rememberCoroutineScope()
     var torch by remember { mutableStateOf(false) }
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
+    val libraries by appContainer().cardIndex.installed.collectAsStateWithLifecycle()
+    var showLibrary by remember { mutableStateOf(false) }
+    if (showLibrary) {
+        AlertDialog(
+            onDismissRequest = { showLibrary = false },
+            title = { Text("Card library") },
+            text = { Column(Modifier.verticalScroll(rememberScrollState())) { CardLibraryPanel() } },
+            confirmButton = { TextButton(onClick = { showLibrary = false }) { Text("Done") } },
+        )
+    }
 
     val executor = remember { Executors.newSingleThreadExecutor() }
     val analyzer = remember { TextAnalyzer { lines -> vm.onLines(lines) } }
@@ -240,6 +252,19 @@ fun ScanScreen(nav: NavController) {
                         "${state.session.size} added · ${formatUsd(state.session.sumOf { it.valueUsd })}",
                         color = Color.White,
                         style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+            if (libraries.isEmpty()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(top = 6.dp).clickable { showLibrary = true },
+                ) {
+                    Text(
+                        "Tap to download the card library — recognises cards from their picture (much more accurate)",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 }
             }

@@ -53,14 +53,17 @@ class OnePieceCatalog(
         return emptyList()
     }
 
-    override suspend fun refresh(cards: List<CardEntity>): List<CatalogCard> {
-        val ids = cards.map { it.number }.distinct()
+    override suspend fun refresh(cards: List<CardEntity>): List<CatalogCard> = byIds(cards.map { it.id })
+
+    override suspend fun byIds(ids: List<String>): List<CatalogCard> {
+        // "op:OP01-001_p1" -> card number "OP01-001"; one request returns every art of that number.
+        val numbers = ids.map { it.removePrefix("op:").substringBefore('_') }.distinct()
         val out = mutableListOf<CatalogCard>()
-        ids.forEachIndexed { i, id ->
+        numbers.forEachIndexed { i, number ->
             if (i > 0) delay(150)
-            out += byId(id)
+            out += byId(number)
         }
-        val wanted = cards.map { it.id }.toSet()
+        val wanted = ids.toSet()
         return out.filter { it.card.id in wanted }
     }
 
