@@ -70,4 +70,17 @@ class ScryfallParseTest {
         assertEquals(1.5, prices.single { it.source == PriceSource.TCGPLAYER && it.finish == Finish.NORMAL }.market!!, 1e-9)
         assertEquals(1.2, prices.single { it.source == PriceSource.CARDMARKET && it.finish == Finish.NORMAL }.market!!, 1e-9)
     }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Test
+    fun readsBothArrayAndOneCardPerLineBulkFormats() {
+        val http = Http()
+        val array = """[{"id":"a","name":"A"},{"id":"b","name":"B"}]"""
+        val lines = "{\"id\":\"a\",\"name\":\"A\"}\n{\"id\":\"b\",\"name\":\"B\"}\n"
+        for (input in listOf(array, lines)) {
+            val ids = http.json.decodeToSequence(input.byteInputStream(), JsonElement.serializer(), DecodeSequenceMode.AUTO_DETECT)
+                .mapNotNull { it.obj()?.str("id") }.toList()
+            assertEquals(listOf("a", "b"), ids)
+        }
+    }
 }

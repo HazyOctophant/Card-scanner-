@@ -109,7 +109,7 @@ class MtgDatabase(
                     if (gz) java.util.zip.GZIPInputStream(b) else b
                 }
                 val batch = ArrayList<MtgDbCard>(BATCH)
-                for (element in http.json.decodeToSequence(source, JsonElement.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)) {
+                for (element in http.json.decodeToSequence(source, JsonElement.serializer(), DecodeSequenceMode.AUTO_DETECT)) {
                     val o = element.obj() ?: continue
                     if (o.str("layout") in SKIPPED_LAYOUTS) continue
                     if (o.arr("games")?.strings()?.contains("paper") == false) continue // digital-only

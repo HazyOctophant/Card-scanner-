@@ -95,7 +95,7 @@ fun magicSources(): List<Source> {
     val uri = bulkFileUrl(bulk) ?: error("No bulk download link in: $bulk")
     val skip = setOf("token", "double_faced_token", "emblem", "art_series", "vanguard", "scheme", "planar", "augment", "host")
     return maybeGunzip(fetchStream(uri)).use { input ->
-        json.decodeToSequence(input, JsonElement.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)
+        json.decodeToSequence(input, JsonElement.serializer(), DecodeSequenceMode.AUTO_DETECT)
             .mapNotNull { it as? JsonObject }
             .filter { o -> o.str("layout") !in skip && (o.arr("games")?.any { (it as? JsonPrimitive)?.content == "paper" } ?: true) }
             .mapNotNull { o ->
