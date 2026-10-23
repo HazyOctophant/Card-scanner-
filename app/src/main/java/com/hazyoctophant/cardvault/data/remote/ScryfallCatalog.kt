@@ -80,7 +80,8 @@ class ScryfallCatalog(private val http: Http) : CardCatalog {
     }
 
     /** Bulk-data descriptor: where today's full card file is and when it was generated. */
-    suspend fun bulkInfo(type: String): JsonObject? = http.get("$base/bulk-data/$type").obj()
+    suspend fun bulkInfo(type: String): JsonObject? =
+        http.get("$base/bulk-data").obj()?.arr("data")?.mapNotNull { it.obj() }?.firstOrNull { it.str("type") == type }
 
     fun parseCard(o: JsonObject): CatalogCard {
         val id = "mtg:" + (o.str("id") ?: "")

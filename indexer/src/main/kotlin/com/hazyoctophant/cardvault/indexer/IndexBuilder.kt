@@ -77,7 +77,10 @@ private fun JsonObject.arr(key: String): JsonArray? = this[key] as? JsonArray
 /** Scryfall "unique artwork": one entry per distinct illustration (reprints with the same art share one). */
 @OptIn(ExperimentalSerializationApi::class)
 fun magicSources(): List<Source> {
-    val bulk = fetchJson("https://api.scryfall.com/bulk-data/unique-artwork") as JsonObject
+    // The bulk-data list names each file by "type"; look ours up there rather than guessing its URL.
+    val list = (fetchJson("https://api.scryfall.com/bulk-data") as JsonObject).arr("data").orEmpty()
+    val bulk = list.mapNotNull { it as? JsonObject }.firstOrNull { it.str("type") == "unique_artwork" }
+        ?: error("Scryfall has no unique_artwork bulk file")
     val uri = bulk.str("download_uri") ?: error("No bulk download link")
     val skip = setOf("token", "double_faced_token", "emblem", "art_series", "vanguard", "scheme", "planar", "augment", "host")
     return fetchStream(uri).use { input ->

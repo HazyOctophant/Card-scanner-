@@ -83,7 +83,7 @@ class MtgDatabase(
     @OptIn(ExperimentalSerializationApi::class)
     suspend fun import(force: Boolean, onProgress: suspend (fraction: Float, cards: Int) -> Unit): ImportResult =
         withContext(Dispatchers.IO) {
-            val info = scryfall.bulkInfo("oracle-cards") ?: error("Scryfall bulk data is unavailable")
+            val info = scryfall.bulkInfo("oracle_cards") ?: error("Scryfall bulk data is unavailable")
             val version = info.str("updated_at") ?: ""
             val uri = info.str("download_uri") ?: error("Scryfall bulk data has no download link")
             val size = info.num("size")?.toLong() ?: 0L
