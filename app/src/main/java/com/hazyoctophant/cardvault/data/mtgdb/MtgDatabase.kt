@@ -85,7 +85,10 @@ class MtgDatabase(
         withContext(Dispatchers.IO) {
             val info = scryfall.bulkInfo("oracle_cards") ?: error("Scryfall bulk data is unavailable")
             val version = info.str("updated_at") ?: ""
-            val uri = info.str("download_uri") ?: error("Scryfall bulk data has no download link")
+            val uri = info.str("download_uri") ?: info.str("download_url")
+                ?: info.values.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                    .firstOrNull { it.startsWith("http") && it.contains(".json") && !it.contains("api.scryfall.com/bulk-data") }
+                ?: error("Scryfall bulk data has no download link")
             val size = info.num("size")?.toLong() ?: 0L
             if (!force && version == settings.current.mtgDbVersion && dao.count() > 0) {
                 return@withContext ImportResult(dao.count(), version, skipped = true)

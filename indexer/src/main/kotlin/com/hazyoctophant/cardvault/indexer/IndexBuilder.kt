@@ -81,7 +81,7 @@ fun magicSources(): List<Source> {
     val list = (fetchJson("https://api.scryfall.com/bulk-data") as JsonObject).arr("data").orEmpty()
     val bulk = list.mapNotNull { it as? JsonObject }.firstOrNull { it.str("type") == "unique_artwork" }
         ?: error("Scryfall has no unique_artwork bulk file")
-    val uri = bulk.str("download_uri") ?: error("No bulk download link")
+    val uri = bulkFileUrl(bulk) ?: error("No bulk download link in: $bulk")
     val skip = setOf("token", "double_faced_token", "emblem", "art_series", "vanguard", "scheme", "planar", "augment", "host")
     return fetchStream(uri).use { input ->
         json.decodeToSequence(input, JsonElement.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)
@@ -96,6 +96,12 @@ fun magicSources(): List<Source> {
             .toList()
     }
 }
+
+/** The file link of a Scryfall bulk-data entry ("download_uri", or any field that points at a .json file). */
+fun bulkFileUrl(bulk: JsonObject): String? =
+    bulk.str("download_uri") ?: bulk.str("download_url")
+        ?: bulk.values.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+            .firstOrNull { it.startsWith("http") && (it.contains(".json") || it.contains("/file")) && !it.contains("api.scryfall.com/bulk-data") }
 
 /** TCGdex: every English Pokémon card with a picture. */
 fun pokemonSources(): List<Source> {
