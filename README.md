@@ -99,7 +99,7 @@ app/src/main/java/com/hazyoctophant/cardvault/
   data/db        Room database: cards, collection, prices, price history, binders, decks
   data/mtgdb     Offline Magic database: bulk import, filters (SQL + Scryfall syntax), weekly update
   indexer/       JVM tool (run in GitHub Actions) that builds the visual card library
-  data/remote    Scryfall, Pokémon TCG API, OPTCG API and exchange-rate clients
+  data/remote    Scryfall, TCGdex, OPTCG API and exchange-rate clients
   data/repo      Collection, pricing (daily refresh + valuation) and binder/deck repositories
   scan           OCR text parser, ML Kit analyzer, scanner state machine
   pricing        Valuation rules and the daily WorkManager job
